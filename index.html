@@ -1673,6 +1673,28 @@ function initWarMap() {
   darkTiles().addTo(map);
 }
 
+function geodesicCircle(centerLat, centerLon, radiusMiles, steps) {
+  steps = steps || 72;
+  const R = 3958.8; // Earth radius in miles
+  const lat1 = centerLat * Math.PI / 180;
+  const lon1 = centerLon * Math.PI / 180;
+  const d = radiusMiles / R;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const brng = (i * 360 / steps) * Math.PI / 180;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(d) +
+      Math.cos(lat1) * Math.sin(d) * Math.cos(brng)
+    );
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+    );
+    points.push([lat2 * 180 / Math.PI, lon2 * 180 / Math.PI]);
+  }
+  return points;
+}
+
 function animateWarMap() {
   if(window['war-map-animated']) return;
   window['war-map-animated'] = true;
@@ -1795,8 +1817,17 @@ function animateWarMap() {
     L.marker([37.2,38],{icon:lbl('~2,100 MI','rgba(255,255,255,0.25)')}).addTo(map);
   }, 4300);
 
-  // T=4800  Strike radius circle animates in (1500 miles = 2414000m, solid stroke, draws over 2.5s)
-  addAnimatedRing(35.7, 51.4, 2414000, 'rgba(192,57,43,0.45)', 1.5, 2500, 4800);
+  // T=4800  Strike radius geodesic circle — true 1,500 mile radius from Tehran
+  setTimeout(() => {
+    const pts = geodesicCircle(35.7, 51.4, 1500, 72);
+    L.polygon(pts, {
+      color: 'rgba(192,57,43,0.45)',
+      weight: 1.5,
+      fill: true,
+      fillColor: '#c0392b',
+      fillOpacity: 0.04
+    }).addTo(map);
+  }, 4800);
 }
 
 // ═══════════════════════════════════════
