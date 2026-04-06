@@ -571,52 +571,76 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
   </div>
   <div class="card-body" id="cb-4">
     <div class="card-inner" id="ci-4">
-      <!-- ROW 1: Image trio full width taller -->
-      <div class="img-trio slide-up d1 io-watch" style="margin-bottom:28px">
-        <div class="img-card">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Shahab-3_2006.jpg/640px-Shahab-3_2006.jpg" alt="Iranian Shahab-3 ballistic missile on TEL truck" loading="lazy" style="height:240px;width:100%;object-fit:cover" onerror="this.style.display='none'">
-          <div class="img-cap"><strong>TEL Truck</strong><br>Iran launches from Transporter Erector Launchers — trucks that drive out of underground tunnel networks, erect the missile, fire, and flee before destruction.</div>
-        </div>
-        <div class="img-card">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/SM-3_launch_2_dd-963.jpg/640px-SM-3_launch_2_dd-963.jpg" alt="SM-3 Standard Missile launch from Navy destroyer" loading="lazy" style="height:240px;width:100%;object-fit:cover" onerror="this.style.display='none'">
-          <div class="img-cap"><strong>SM-3 Interceptor</strong><br>USS Oscar Austin (Arleigh Burke-class destroyer) fired Standard Missile-3 interceptors. Each destroyed an Iranian ballistic missile in terminal phase before impact.</div>
-        </div>
-        <div class="img-card">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Iranian_underground_missile_silo.jpg/640px-Iranian_underground_missile_silo.jpg" alt="Iranian underground missile city tunnel" loading="lazy" style="height:240px;width:100%;object-fit:cover" onerror="this.style.display='none'">
-          <div class="img-cap"><strong>Underground "Missile City"</strong><br>IRGC tunnel networks store missiles on rails. The campaign targeted launch vehicles and production infrastructure — burning down Iran's magazine permanently.</div>
-        </div>
-      </div>
-
-      <!-- ROW 2: 86% featured callout -->
-      <div class="slide-up d2 io-watch" style="background:rgba(196,152,58,0.05);border:1px solid rgba(196,152,58,0.2);border-radius:2px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:32px;flex-wrap:wrap">
-        <div style="flex-shrink:0">
-          <div id="pct-counter" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(56px,7vw,88px);font-weight:300;color:var(--gold);line-height:1;letter-spacing:-.02em">0%</div>
-        </div>
-        <div style="flex:1;min-width:200px">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;margin-bottom:8px">Daily launch reduction since Feb 28</div>
-          <div style="font-size:clamp(14px,1.5vw,17px);color:var(--dim2);line-height:1.7;font-weight:300">Iran is burning through a finite stockpile of missiles and launchers — <strong style="color:var(--white);font-weight:400">not building new ones.</strong> The campaign targeted production infrastructure. Their magazine is going down, not being replenished.</div>
-        </div>
-      </div>
-
-      <!-- ROW 3: Stat grid -->
-      <div class="stat-grid slide-up d3 io-watch" style="margin-bottom:24px">
-        <div class="sg-cell"><div class="sg-num" style="color:var(--red)">4</div><div class="sg-label">Missiles fired toward Turkey</div></div>
-        <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">4</div><div class="sg-label">Intercepted by NATO</div></div>
-        <div class="sg-cell"><div class="sg-num" style="color:var(--purple)">&lt;10</div><div class="sg-label">Minutes per intercept</div></div>
-        <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes near Greece</div></div>
-      </div>
-
-      <!-- ROW 4: Under 10 min explainer -->
-      <div class="slide-up d4 io-watch" style="background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.18);border-radius:2px;padding:18px 22px;margin-bottom:28px">
-        <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.14em;color:var(--purple);text-transform:uppercase;margin-bottom:8px">Under 10 minutes · radar acquisition to impact</div>
-        <div style="font-size:14px;color:var(--dim2);line-height:1.8">From the moment USS Oscar Austin's radar acquired the inbound missile to SM-3 impact: <strong style="color:var(--white);font-weight:400">under 10 minutes.</strong> The destroyer tracked, targeted, and fired within its engagement envelope. A Turkish official confirmed the first missile may have been aimed at RAF Akrotiri — it entered Turkish airspace and was destroyed before reaching the Aegean. Dates: Mar 4 &middot; Mar 9 &middot; Mar 13 &middot; Mar 30.</div>
-      </div>
-
-      <!-- ROW 5: Map full width -->
-      <div class="slide-up d5 io-watch">
+      <!-- ROW 1: Map — full width, top -->
+      <div class="slide-up d1 io-watch" style="margin-bottom:32px">
         <div class="card-map" id="med-map-wrap" style="height:420px">
-          <div class="map-bar">Eastern Mediterranean — Missile Path &middot; Intercept Geography &middot; Mar 4–Mar 30</div>
+          <div class="map-bar">Eastern Mediterranean — Missile Path · Intercept Geography · Mar 4–Mar 30</div>
           <div id="med-map" style="width:100%;height:100%"></div>
+        </div>
+      </div>
+
+      <!-- ROW 2: Two-col — 86% left, stats+explainer right -->
+      <div class="two-col slide-up d2 io-watch" style="margin-bottom:32px;align-items:start">
+
+        <!-- LEFT: 86% callout -->
+        <div style="background:rgba(196,152,58,0.05);border:1px solid rgba(196,152,58,0.2);border-radius:2px;padding:28px 28px">
+          <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+            <div id="pct-counter" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(52px,6vw,80px);font-weight:300;color:var(--gold);line-height:1;letter-spacing:-.02em">0%</div>
+            <div style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.1vw,12px);letter-spacing:.12em;color:var(--gold);text-transform:uppercase;line-height:1.4">Reduction in daily<br>launches since<br>February 28</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:10px;font-size:14px;color:var(--dim2);line-height:1.75;padding-bottom:12px;border-bottom:1px solid var(--border)">
+              <span style="color:var(--gold);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:3px">—</span>
+              <span>Iran is burning through a finite stockpile of missiles and launchers, <strong style="color:var(--white);font-weight:400">not building new ones.</strong> Their magazine is going down, not being replenished.</span>
+            </div>
+            <div style="display:flex;gap:10px;font-size:14px;color:var(--dim2);line-height:1.75;padding-bottom:12px;border-bottom:1px solid var(--border)">
+              <span style="color:var(--gold);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:3px">—</span>
+              <span>The campaign specifically targeted <strong style="color:var(--white);font-weight:400">production infrastructure</strong> — factories, launchers, and supply chains. Iran cannot replace what's being destroyed.</span>
+            </div>
+            <div style="display:flex;gap:10px;font-size:14px;color:var(--dim2);line-height:1.75">
+              <span style="color:var(--gold);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:3px">—</span>
+              <span>Per Iran's own stated military doctrine, targets are <strong style="color:var(--white);font-weight:400">US bases, Gulf states, and Israel only.</strong> Greece hosts no comparable military presence and is explicitly outside that doctrine.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Stat grid + Under 10 min -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="stat-grid" style="margin:0">
+            <div class="sg-cell"><div class="sg-num" style="color:var(--red)">4</div><div class="sg-label">Missiles fired toward Turkey</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">4</div><div class="sg-label">Intercepted by NATO</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--purple)">&lt;10</div><div class="sg-label">Minutes per intercept</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes near Greece</div></div>
+          </div>
+          <div style="background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.18);border-radius:2px;padding:20px 22px">
+            <div style="font-size:clamp(18px,2vw,24px);font-weight:300;color:var(--purple);margin-bottom:14px;line-height:1.1">Under 10 minutes,<br><em style="font-style:italic">radar to impact.</em></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:10px;font-size:13px;color:var(--dim2);line-height:1.7">
+                <span style="color:var(--purple);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:2px">—</span>
+                <span>USS Oscar Austin's Aegis radar acquired each inbound missile and computed an intercept solution autonomously within seconds of detection.</span>
+              </div>
+              <div style="display:flex;gap:10px;font-size:13px;color:var(--dim2);line-height:1.7">
+                <span style="color:var(--purple);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:2px">—</span>
+                <span>SM-3 interceptors destroyed all four missiles in the <strong style="color:var(--white);font-weight:400">terminal phase</strong> — the final descent arc — before any reached Turkish soil.</span>
+              </div>
+              <div style="display:flex;gap:10px;font-size:13px;color:var(--dim2);line-height:1.7">
+                <span style="color:var(--purple);font-family:'DM Mono',monospace;flex-shrink:0;margin-top:2px">—</span>
+                <span>A Turkish official confirmed the first missile's trajectory pointed toward <strong style="color:var(--white);font-weight:400">RAF Akrotiri, Cyprus</strong> — not Greece. It was destroyed 690 miles from Athens. Dates: Mar 4 · Mar 9 · Mar 13 · Mar 30.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 3: Two images — TEL truck + SM-3 launch -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="slide-up d3 io-watch">
+        <div class="img-card">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Shahab-3_2006.jpg/640px-Shahab-3_2006.jpg" alt="Iranian Shahab-3 ballistic missile on TEL truck" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.display='none'">
+          <div class="img-cap"><strong>TEL Truck — Transporter Erector Launcher</strong><br>Iran fires ballistic missiles from trucks that drive out of underground "Missile City" networks, erect the missile, fire, and attempt to flee before being destroyed by US/Israeli strikes targeting the launchers.</div>
+        </div>
+        <div class="img-card">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/SM-3_launch_2_dd-963.jpg/640px-SM-3_launch_2_dd-963.jpg" alt="SM-3 Standard Missile launch from USS Spruance destroyer" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.display='none'">
+          <div class="img-cap"><strong>SM-3 Launch — USS Oscar Austin (Arleigh Burke-class)</strong><br>The Standard Missile-3 interceptor launches from a vertical strike cell aboard the destroyer. Four fired, four kills. The Oscar Austin was operating in the Eastern Mediterranean between Cyprus and the Lebanese coast.</div>
         </div>
       </div>
     </div>
@@ -2073,25 +2097,25 @@ function animateMedMap() {
     // Akrotiri
     L.marker([34.6,32.97],{icon:dotIcon('#e07030',9)}).addTo(map);
     typeLabel(34.4,33.2,'AKROTIRI','#e07030','UK RAF · Hezbollah drone · L3',null,0);
-  }, 300);
+  }, 600);
 
   setTimeout(() => {
     // Rhodes
     L.marker([36.4,28.2],{icon:dotIcon('rgba(61,187,116,0.55)',7)}).addTo(map);
     typeLabel(36.6,28.3,'RHODES','rgba(61,187,116,0.55)','250 mi from Cyprus',null,0);
-  }, 600);
+  }, 1200);
 
   setTimeout(() => {
     // USS Oscar Austin — Eastern Med between Cyprus and Lebanon coast
     L.marker([35.0,32.0],{icon:pulseIcon('#5aa0e8',10)}).addTo(map);
     typeLabel(35.2,32.2,'USS OSCAR AUSTIN','#5aa0e8','Arleigh Burke · SM-3 · Eastern Med',null,0);
-  }, 900);
+  }, 1800);
 
   // T=1400  Iran launch area pulses red
   setTimeout(() => {
     L.marker([33.0,47.0],{icon:pulseIcon('#c0392b',11)}).addTo(map);
     typeLabel(33.2,47.5,'IRAN LAUNCH AREA','rgba(192,57,43,0.9)','W. Iran · IRGC missile base',null,200);
-  }, 1400);
+  }, 2800);
 
   // T=2200  Missile path grows: Iran → Iraq → Syria → Dörtyol (3 segments, 600ms each)
   setTimeout(() => {
@@ -2101,27 +2125,27 @@ function animateMedMap() {
       [35.0, 38.5],   // Syria
       [36.8, 36.2],   // Dörtyol intercept
     ];
-    growPath(missileWaypoints, 'rgba(192,57,43,0.75)', 2, 550, () => {
+    growPath(missileWaypoints, 'rgba(192,57,43,0.75)', 2, 1100, () => {
       // On path complete: intercept burst
       setTimeout(() => {
         L.marker([36.8,36.2],{icon:pulseIcon('#a78bfa',11)}).addTo(map);
         L.circle([36.8,36.2],{radius:40000,color:'rgba(167,139,250,0.7)',weight:1.5,fill:true,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);
         typeLabel(37.0,36.5,'D\u00d6RTYOL \u2014 4\u00d7 INTERCEPT','#a78bfa','SM-3 · USS Oscar Austin · All stopped',null,200);
-      }, 200);
+      }, 400);
     });
-  }, 2200);
+  }, 4400);
 
   // T=3800  SM-3 intercept arc: Oscar Austin → Dörtyol
   setTimeout(() => {
-    growLine([35.0,32.0],[36.8,36.2],'rgba(167,139,250,0.6)',1.5,900,null);
-    typeLabel(36.2,34.2,'SM-3 INTERCEPT ARC','rgba(167,139,250,0.5)',null,null,800);
-  }, 3800);
+    growLine([35.0,32.0],[36.8,36.2],'rgba(167,139,250,0.6)',1.5,1800,null);
+    typeLabel(36.2,34.2,'SM-3 INTERCEPT ARC','rgba(167,139,250,0.5)',null,null,1600);
+  }, 7600);
 
   // T=5000  Distance reference line Athens → Dörtyol (subtle)
   setTimeout(() => {
-    growLine([37.97,23.7],[36.8,36.2],'rgba(255,255,255,0.1)',1,600,null);
-    typeLabel(37.6,30.0,'690 MI','rgba(255,255,255,0.3)',null,null,500);
-  }, 5000);
+    growLine([37.97,23.7],[36.8,36.2],'rgba(255,255,255,0.1)',1,1200,null);
+    typeLabel(37.6,30.0,'690 MI','rgba(255,255,255,0.3)',null,null,1000);
+  }, 10000);
 }
 
 // ═══════════════════════════════════════
