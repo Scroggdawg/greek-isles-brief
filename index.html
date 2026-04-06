@@ -1748,7 +1748,9 @@ function animateUSMap() {
   // Helper: animated dashed polyline
   function addAnimatedLine(coords, color, weight, dashArray, drawMs, delay) {
     setTimeout(() => {
-      const line = L.polyline(coords, {color, weight, dashArray}).addTo(map);
+      const lineOpts = {color, weight};
+      if(dashArray) lineOpts.dashArray = dashArray;
+      const line = L.polyline(coords, lineOpts).addTo(map);
       setTimeout(() => {
         const path = line.getElement();
         if (!path) return;
@@ -1789,7 +1791,7 @@ function animateUSMap() {
   // T=3600  Halifax → DC dashed missile path draws in (1800ms draw)
   addAnimatedLine(
     [[44.6488,-63.5752],[38.9072,-77.0369]],
-    'rgba(192,57,43,0.5)', 2, '8 5', 1800, 3600
+    'rgba(192,57,43,0.5)', 2, null, 1800, 3600
   );
 
   // T=4200  SA soft pulse circle fades in
