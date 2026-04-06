@@ -404,7 +404,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
     <div class="card-toggle open" id="ct-1">+</div>
   </div>
   <div class="card-body" id="cb-1">
-    <div class="card-inner revealed" id="ci-1">
+    <div class="card-inner" id="ci-1">
       <div class="two-col">
         <div>
           <div class="slide-left d1 io-watch">
@@ -901,7 +901,7 @@ function lbl(text, color, sub, subColor) {
 // ═══════════════════════════════════════
 
 const heroEvents = [
-  {d:'Feb 28',s:'Operation Epic Fury — ~900 strikes. Khamenei killed.',cl:'er',lat:35.7,lon:51.4,r:500000,ic:false},
+  {d:'Feb 28',s:'Operation Epic Fury — ~900 strikes. Khamenei killed.',cl:'eb',lat:35.7,lon:51.4,r:500000,ic:false},
   {d:'Mar 1', s:'Tanker Skylight struck — 2 killed, Strait of Hormuz',cl:'er',lat:25.3,lon:56.4,r:170000,ic:false},
   {d:'Mar 3', s:'Hezbollah drone strikes RAF Akrotiri, Cyprus',cl:'eo',lat:34.6,lon:32.97,r:160000,ic:false},
   {d:'Mar 4', s:'NATO intercept #1 — missile destroyed over Turkey',cl:'ep',lat:36.8,lon:36.2,r:175000,ic:true},
@@ -1503,14 +1503,14 @@ function beatDateCounter(){
             // Feb 28: burst cluster — 8 dots across Iran strike targets
             if(ev2.d==='Feb 28'){
               const burstTargets=[
-                [33.7,48.8,'#c0392b'],  // Fordo nuclear site area
-                [35.2,52.1,'#c0392b'],  // Parchin military complex
-                [34.0,49.9,'#c0392b'],  // Isfahan nuclear
-                [36.3,59.6,'#c0392b'],  // Mashhad IRGC
-                [32.6,51.7,'#c0392b'],  // Isfahan air defense
-                [31.3,48.7,'#c0392b'],  // Ahvaz oil/military
-                [35.8,50.5,'#c0392b'],  // Tehran western outskirts
-                [34.8,48.5,'#c0392b'],  // Kermanshah missile base
+                [33.7,48.8,'#5aa0e8'],  // Fordo nuclear site area
+                [35.2,52.1,'#5aa0e8'],  // Parchin military complex
+                [34.0,49.9,'#5aa0e8'],  // Isfahan nuclear
+                [36.3,59.6,'#5aa0e8'],  // Mashhad IRGC
+                [32.6,51.7,'#5aa0e8'],  // Isfahan air defense
+                [31.3,48.7,'#5aa0e8'],  // Ahvaz oil/military
+                [35.8,50.5,'#5aa0e8'],  // Tehran western outskirts
+                [34.8,48.5,'#5aa0e8'],  // Kermanshah missile base
               ];
               burstTargets.forEach(([lat,lon,col],bi)=>{
                 setTimeout(()=>{
