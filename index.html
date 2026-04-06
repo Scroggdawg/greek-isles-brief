@@ -401,7 +401,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
       <div class="card-title">Where it's<br><em>happening.</em></div>
       <div class="card-sub">Full strike map · Feb 28 – Apr 5, 2026</div>
     </div>
-    <div class="card-toggle open" id="ct-1">+</div>
+    <div class="card-toggle" id="ct-1">+</div>
   </div>
   <div class="card-body" id="cb-1">
     <div class="card-inner" id="ci-1">
@@ -764,7 +764,7 @@ document.querySelectorAll('.io-watch').forEach(el => globalIO.observe(el));
 // ═══════════════════════════════════════
 // CARD TOGGLE — height animation
 // ═══════════════════════════════════════
-const openCards = new Set([1]); // card 1 starts open
+const openCards = new Set(); // all cards start collapsed
 
 function toggleCard(n) {
   const body = document.getElementById('cb-'+n);
@@ -803,6 +803,7 @@ function toggleCard(n) {
           setTimeout(() => el.classList.add('in'), 50);
         });
         // Animate distance bars
+        if(n===1) { setTimeout(()=>animateWarMap(), 400); }
         if(n===2) { animateDistBars(); animateUSMap(); }
         if(n===3) animateTimeline();
         if(n===4) { animatePctCounter(); animateMedMap(); }
@@ -835,11 +836,7 @@ function invalidateMaps() {
   });
 }
 
-// Initialize first card open state
-(function(){
-  const body = document.getElementById('cb-1');
-  if(body) body.style.height = 'auto';
-})();
+// All cards start collapsed — opened via toggleCard(n)
 
 // ═══════════════════════════════════════
 // TILE LAYER
@@ -2157,17 +2154,7 @@ function initAll(){
   buildTimeline();
   document.querySelectorAll('.hidden-evt').forEach(el=>el.style.display='none');
 
-  // Trigger stagger on card 1 (already open)
-  setTimeout(()=>{
-    const ci1=document.getElementById('ci-1');
-    if(ci1){
-      ci1.querySelectorAll('.slide-up,.slide-left,.slide-right,.fade-in-el').forEach(el=>{
-        setTimeout(()=>el.classList.add('in'),50);
-      });
-    }
-    // Animate war map — card 1 starts open
-    setTimeout(()=>animateWarMap(), 400);
-  },600);
+  // Card 1 starts collapsed — animateWarMap fires on toggleCard(1)
 }
 
 if(typeof L!=='undefined'){
