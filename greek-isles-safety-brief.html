@@ -1707,7 +1707,7 @@ function initUSMap() {
 
   // Charlotte NC = Akrotiri (~590 mi NE)
   L.marker([35.2271,-80.8431],{icon:dotIcon('#e07030',9)}).addTo(map);
-  L.marker([35.5,-80.0],{icon:lbl('CHARLOTTE = AKROTIRI','#e07030','~590 mi NE · Hezbollah target')}).addTo(map);
+  L.marker([35.5,-80.0],{icon:lbl('CHARLOTTE = AKROTIRI','#e07030','~590 mi NE · Hezbollah drone strike')}).addTo(map);
 
   // Washington DC = Dörtyol (~880 mi NE)
   L.marker([38.9072,-77.0369],{icon:pulseIcon('#a78bfa',11)}).addTo(map);
@@ -1720,9 +1720,11 @@ function initUSMap() {
 
   // Missile path Halifax → DC
   L.polyline([[44.6488,-63.5752],[38.9072,-77.0369]],{color:'rgba(192,57,43,0.5)',weight:2,dashArray:'8 5'}).addTo(map);
+  // Intercept burst at DC
+  L.circle([38.9072,-77.0369],{radius:80000,color:'rgba(167,139,250,0.7)',weight:1.5,dashArray:'4 3',fill:true,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);
   // SA → DC scale reference
   L.polyline([[29.4241,-98.4936],[38.9072,-77.0369]],{color:'rgba(255,255,255,0.07)',weight:1,dashArray:'3 4'}).addTo(map);
-  L.marker([36.5,-85],{icon:lbl('INTERCEPTED','rgba(167,139,250,0.65)','Halifax→DC · All stopped')}).addTo(map);
+  L.marker([39.5,-76.0],{icon:lbl('INTERCEPTED.','rgba(167,139,250,0.85)','Halifax→DC · SM-3 · All stopped')}).addTo(map);
 }
 
 // ═══════════════════════════════════════
