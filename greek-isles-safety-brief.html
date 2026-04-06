@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greek Isles — Safety Brief, June 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080d;--bg2:#0c0e18;--bg3:#090b14;
+  --gold:#c4983a;--gold-dim:rgba(196,152,58,0.2);
+  --white:#f0ece4;--dim:#55556a;--dim2:#9090a0;
+  --red:#c0392b;--safe:#3dbb74;--blue:#5aa0e8;--purple:#a78bfa;--orange:#e07030;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--white);font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;line-height:1.7;overflow-x:hidden}
+
+.leaflet-container{background:#060810!important;cursor:default!important}
+.leaflet-tile-pane{filter:brightness(1.15) saturate(1.05)}
+.leaflet-control-attribution{background:rgba(6,8,16,0.7)!important;color:rgba(255,255,255,0.2)!important;font-size:8px!important}
+.leaflet-control-attribution a{color:rgba(255,255,255,0.2)!important}
+.leaflet-control-zoom{display:none!important}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:space-between;align-items:center;padding:12px 32px;background:rgba(7,8,13,0);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0);transition:background .8s ease,border-color .8s ease}
+nav.nav-in{background:rgba(7,8,13,0.96);border-bottom-color:var(--border)}
+.nav-brand{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;color:rgba(255,255,255,0);text-transform:uppercase;transition:color .8s ease}
+nav.nav-in .nav-brand{color:var(--dim2)}
+.nav-brand b{color:var(--gold);font-weight:400}
+.nav-pill{font-family:'DM Mono',monospace;font-size:9px;background:rgba(61,187,116,0);border:1px solid rgba(61,187,116,0);color:rgba(61,187,116,0);padding:4px 10px;border-radius:2px;letter-spacing:.1em;transition:all .8s ease}
+nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,116,0.3);color:var(--safe)}
+@media(max-width:600px){.nav-brand{font-size:9px}}
+
+/* ═══════════════════════════════
+   HERO
+═══════════════════════════════ */
+#hero{position:relative;height:100vh;min-height:600px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;background:#000}
+
+#hero-map-bg{position:absolute;inset:0;z-index:0;opacity:0;transition:opacity 3.2s cubic-bezier(0.25,0,0.5,1)}
+#hero-map-bg.map-ready{opacity:1}
+#hero-map-bg .leaflet-container{width:100%!important;height:100%!important}
+
+.hero-vignette{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(7,8,13,0) 0%,rgba(7,8,13,0.2) 50%,rgba(7,8,13,0.75) 85%,rgba(7,8,13,0.88) 100%)}
+
+/* Bottom text area */
+.hero-text{position:relative;z-index:4;padding:0 clamp(20px,5vw,48px) clamp(40px,6vh,64px);pointer-events:none}
+
+/* Distance info box */
+/* Distance horizontal cells */
+#dist-box{max-width:760px;margin-bottom:16px;
+  opacity:0;transition:opacity .5s ease}
+#dist-box.show{opacity:1}
+.dhcell{flex:1;min-width:150px;background:transparent;
+  padding:12px 14px;
+  border-right:1px solid rgba(255,255,255,0.08);
+  opacity:0;transform:translateY(8px);
+  transition:opacity .5s ease,transform .5s ease;
+  position:relative;overflow:visible}
+.dhcell::before{content:'';position:absolute;top:0;left:0;
+  height:2px;width:0;background:var(--accent);
+  transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+.dhcell.in::before{width:100%}
+.dhcell .dhc-lbl,.dhcell .dhc-val,.dhcell .dhc-sub{
+  opacity:0;transform:translateY(4px);
+  transition:opacity 0.7s ease,transform 0.7s ease}
+.dhcell.in{opacity:1;transform:translateY(0)}
+.dhcell.in .dhc-lbl{opacity:1;transform:translateY(0);transition-delay:0.9s}
+.dhcell.in .dhc-val{opacity:1;transform:translateY(0);transition-delay:1.2s}
+.dhcell.in .dhc-sub{opacity:1;transform:translateY(0);transition-delay:1.44s}
+.dhcell.in div>div>.dhc-lbl{opacity:1;transform:translateY(0);transition-delay:0.5s}
+.dhcell.in div>div>.dhc-val{opacity:1;transform:translateY(0);transition-delay:0.65s}
+.dhcell.in div>div>.dhc-sub{opacity:1;transform:translateY(0);transition-delay:0.78s}
+.dhc-lbl{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:6px}
+.dhc-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:400;color:var(--white);line-height:1;margin-bottom:5px}
+.dhc-sub{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+
+/* Hero strip — final state */
+.hero-strip{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--border);max-width:720px;
+  opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease}
+.hero-strip.in{opacity:1;transform:translateY(0)}
+.hs{padding:12px 16px;border-right:1px solid var(--border);flex:1;min-width:110px}
+.hs:last-child{border-right:none}
+.hs-l{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.hs-v{font-size:14px;font-weight:400;line-height:1.1}
+
+/* Greece final confirmation */
+#greece-final{font-family:'DM Mono',monospace;font-size:9px;color:rgba(61,187,116,0.65);
+  letter-spacing:.16em;text-transform:uppercase;margin-bottom:12px;
+  opacity:0;transition:opacity .6s ease}
+#greece-final.show{opacity:1}
+
+/* DATE COUNTER — top right, Beat 10 */
+#date-counter{position:absolute;top:clamp(70px,10vh,90px);right:clamp(16px,4vw,44px);
+  z-index:5;text-align:right;pointer-events:none;opacity:0;transition:opacity .6s ease}
+#date-counter.show{opacity:1}
+#dc-label{font-family:'DM Mono',monospace;font-size:8px;color:rgba(196,152,58,0.5);
+  letter-spacing:.2em;text-transform:uppercase;margin-bottom:3px}
+#dc-date{font-family:'DM Mono',monospace;font-size:clamp(34px,5vw,58px);font-weight:400;
+  color:rgba(255,255,255,0.92);letter-spacing:.02em;line-height:1;transition:color .08s}
+#dc-wrap{display:inline-block;padding:3px 10px;border:1px solid transparent;
+  border-radius:2px;transition:border-color .1s,background .1s}
+#dc-wrap.fr{border-color:rgba(192,57,43,0.75);background:rgba(192,57,43,0.14)}
+#dc-wrap.fp{border-color:rgba(167,139,250,0.75);background:rgba(167,139,250,0.1)}
+#dc-wrap.fg{border-color:rgba(61,187,116,0.65);background:rgba(61,187,116,0.08)}
+#dc-log{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.dlr{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.05em;line-height:1.45;
+  text-align:left;white-space:nowrap;opacity:0;transform:translateY(-3px);transition:opacity .3s,transform .3s}
+.dlr.in{opacity:1;transform:translateY(0)}
+.dlr::before{content:'● ';opacity:.7}
+.dlr.er{color:rgba(192,57,43,0.9)}.dlr.ep{color:rgba(167,139,250,0.85)}.dlr.eo{color:rgba(224,112,48,0.9)}
+.dlr.eg{color:rgba(61,187,116,0.85)}.dlr.eb{color:rgba(90,160,232,0.85)}.dlr.ed{color:rgba(180,180,200,0.7)}.dlr.empty{color:rgba(120,120,140,0.45)}
+@media(max-width:600px){#dc-log{max-width:200px}.dlr{font-size:7px}}
+
+/* Scroll hint */
+#scroll-hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+  z-index:5;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.2em;
+  color:rgba(255,255,255,0.18);text-transform:uppercase;opacity:0;transition:opacity .8s ease}
+#scroll-hint.show{opacity:1}
+
+/* ═══════════════════════════════
+   CARD SYSTEM
+═══════════════════════════════ */
+.cards{display:flex;flex-direction:column;gap:0}
+.card-section{border-bottom:1px solid var(--border)}
+.card-section:nth-child(odd){background:var(--bg)}
+.card-section:nth-child(even){background:var(--bg2)}
+
+.card-header{display:grid;grid-template-columns:120px 1fr auto;gap:20px;align-items:center;padding:36px 48px;cursor:pointer;transition:background .2s;-webkit-user-select:none;user-select:none}
+.card-header:hover{background:rgba(255,255,255,0.018)}
+@media(max-width:700px){.card-header{grid-template-columns:72px 1fr auto;padding:24px 20px;gap:14px}}
+
+.card-num{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(68px,9vw,120px);font-weight:300;color:rgba(255,255,255,0.05);line-height:1;letter-spacing:-.04em;flex-shrink:0;transition:color .3s}
+.card-header:hover .card-num{color:rgba(255,255,255,0.09)}
+.card-num.open-num{color:rgba(196,152,58,0.12)!important}
+
+.card-headline{}
+.card-title{font-size:clamp(20px,3vw,38px);font-weight:300;line-height:1.1;letter-spacing:-.01em}
+.card-title em{font-style:italic;color:var(--gold)}
+.card-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2);letter-spacing:.1em;margin-top:7px;text-transform:uppercase}
+
+.card-toggle{width:34px;height:34px;border:1px solid var(--border2);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;font-size:16px;color:var(--dim2);transition:all .3s;line-height:1}
+.card-toggle.open{border-color:var(--gold);color:var(--gold);transform:rotate(45deg)}
+
+/* Body — clip-path animation */
+.card-body{overflow:hidden;height:0;transition:height .55s cubic-bezier(0.4,0,0.2,1)}
+.card-inner{padding:0 48px 52px;opacity:0;transform:translateY(20px);transition:opacity .4s ease .1s,transform .4s ease .1s}
+.card-inner.revealed{opacity:1;transform:translateY(0)}
+@media(max-width:700px){.card-inner{padding:0 20px 36px}}
+
+/* ═══════════════════════════════
+   MAP INSIDE CARD
+═══════════════════════════════ */
+.card-map{width:100%;height:500px;border:1px solid var(--border);border-radius:2px;overflow:hidden;position:relative;background:var(--bg3)}
+.card-map .leaflet-container{width:100%!important;height:100%!important}
+.map-bar{position:absolute;top:0;left:0;right:0;z-index:400;pointer-events:none;padding:9px 12px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.15em;color:rgba(196,152,58,.55);text-transform:uppercase;background:linear-gradient(to bottom,rgba(6,8,16,.85),transparent)}
+@media(max-width:700px){.card-map{height:280px}}
+
+/* ═══════════════════════════════
+   LAYOUT HELPERS
+═══════════════════════════════ */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+@media(max-width:900px){.two-col{grid-template-columns:1fr;gap:24px}}
+
+.mono-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.rule{width:28px;height:1px;background:var(--gold-dim);margin:12px 0 16px}
+.body-p{font-size:16px;color:var(--dim2);line-height:1.85}
+.body-p strong{color:var(--white);font-weight:400}
+.body-p + .body-p{margin-top:10px}
+
+/* animate-in for card inner elements */
+.slide-up{opacity:0;transform:translateY(24px);transition:opacity .5s ease,transform .5s ease}
+.slide-up.in{opacity:1;transform:translateY(0)}
+.slide-left{opacity:0;transform:translateX(-24px);transition:opacity .5s ease,transform .5s ease}
+.slide-left.in{opacity:1;transform:translateX(0)}
+.slide-right{opacity:0;transform:translateX(24px);transition:opacity .5s ease,transform .5s ease}
+.slide-right.in{opacity:1;transform:translateX(0)}
+.fade-in-el{opacity:0;transition:opacity .6s ease}
+.fade-in-el.in{opacity:1}
+
+/* STAGGER DELAYS */
+.d1{transition-delay:.05s}.d2{transition-delay:.15s}.d3{transition-delay:.25s}.d4{transition-delay:.35s}.d5{transition-delay:.45s}
+
+/* ═══════════════════════════════
+   IMAGE CARDS
+═══════════════════════════════ */
+.img-trio{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+@media(max-width:700px){.img-trio{grid-template-columns:1fr}}
+.img-card{position:relative;border:1px solid var(--border);border-radius:2px;overflow:hidden;background:var(--bg3)}
+.img-card img{width:100%;height:180px;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)}
+.img-card:hover img{filter:brightness(0.9) saturate(0.85);transition:filter .3s}
+.img-cap{padding:10px 12px;font-family:'DM Mono',monospace;font-size:8px;color:var(--dim2);letter-spacing:.08em;line-height:1.5}
+.img-cap strong{color:var(--white)}
+
+/* Boat image */
+.boat-img-wrap{position:relative;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-top:16px}
+.boat-img-wrap img{width:100%;height:220px;object-fit:cover;display:block;filter:brightness(0.8) saturate(0.75)}
+.boat-img-overlay{position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to top,rgba(7,8,13,.9),transparent);font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2);letter-spacing:.08em}
+
+/* ═══════════════════════════════
+   DISTANCE & ANALOGY
+═══════════════════════════════ */
+.analogy-box{background:rgba(196,152,58,.04);border:1px solid var(--gold-dim);border-radius:2px;padding:22px 26px;margin-top:20px}
+.aline{font-size:15px;color:var(--dim2);line-height:1.75;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.aline:last-child{border-bottom:none;padding-bottom:0}
+.aline strong{color:var(--white);font-weight:400}
+.aquote{font-size:clamp(16px,1.8vw,20px);font-style:italic;color:var(--white);margin-top:18px;padding-top:16px;border-top:1px solid var(--border);line-height:1.4}
+
+.dist-row{padding:12px 0;border-bottom:1px solid var(--border)}
+.dist-row:last-child{border-bottom:none}
+.dist-top{display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px}
+.dist-place{color:var(--white)}
+.dist-mi{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2)}
+.dist-track{height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+.dist-fill{height:100%;border-radius:2px;width:0;transition:width 1.2s cubic-bezier(0.4,0,0.2,1)}
+.dist-note{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);margin-top:4px}
+
+/* ═══════════════════════════════
+   STATS
+═══════════════════════════════ */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
+@media(max-width:700px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+.sg-cell{background:var(--bg3);padding:20px 16px}
+.sg-num{font-size:36px;font-weight:300;line-height:1;margin-bottom:4px}
+.sg-label{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;line-height:1.4}
+
+/* ═══════════════════════════════
+   TIMELINE
+═══════════════════════════════ */
+.tl-controls{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.twirl-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;background:var(--bg3);border:1px solid var(--border2);color:var(--dim2);padding:8px 14px;border-radius:2px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.twirl-btn:hover{border-color:var(--gold);color:var(--gold)}
+.twirl-icon{transition:transform .3s ease;display:inline-block;font-style:normal}
+.tl-key{display:flex;gap:12px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.06em}
+.tl-key span{display:flex;align-items:center;gap:4px}
+.kdot{width:7px;height:7px;border-radius:50%}
+
+.tl-wrap{position:relative}
+.tl-spine{position:absolute;left:100px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(--border) 3%,var(--border) 97%,transparent)}
+.tl-row{display:grid;grid-template-columns:84px 24px 1fr;align-items:start;padding:11px 0}
+.tl-row.hidden-evt{display:none}
+.tl-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-align:right;padding-right:12px;padding-top:2px;line-height:1.4}
+.tl-dot-col{display:flex;justify-content:center;padding-top:3px;z-index:2}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tl-content{padding-left:12px}
+.tl-tag{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px}
+.tl-title{font-size:13px;line-height:1.4;color:var(--white)}
+.tl-loc{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);margin-top:2px}
+.tl-content.hl-war{border-left:2px solid var(--red);background:rgba(192,57,43,.04);padding:8px 12px;border-radius:0 2px 2px 0}
+.tl-content.hl-greece{border-left:2px solid var(--safe);background:rgba(61,187,116,.04);padding:8px 12px;border-radius:0 2px 2px 0}
+.tl-content.hl-nato{border-left:2px solid var(--purple);background:rgba(167,139,250,.04);padding:8px 12px;border-radius:0 2px 2px 0}
+
+/* ═══════════════════════════════
+   SCENARIO CARDS
+═══════════════════════════════ */
+.sc-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+@media(max-width:700px){.sc-pair{grid-template-columns:1fr}}
+.sc-card{border:1px solid var(--border);border-radius:2px;padding:22px}
+.sc-card.orange{border-color:rgba(224,112,48,.25);background:rgba(224,112,48,.03)}
+.sc-card.red{border-color:rgba(192,57,43,.25);background:rgba(192,57,43,.03)}
+.sc-overline{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.sc-title{font-size:17px;font-weight:400;margin-bottom:10px;line-height:1.2}
+.sc-body{font-size:13px;color:var(--dim2);line-height:1.8}
+.sc-body strong{color:var(--white);font-weight:400}
+.ind-list{margin-top:12px}
+.ind-item{display:flex;gap:8px;font-size:12px;color:var(--dim2);line-height:1.6;padding:6px 0;border-bottom:1px solid var(--border)}
+.ind-item:last-child{border-bottom:none}
+.ind-n{font-family:'DM Mono',monospace;font-size:8px;color:var(--gold);flex-shrink:0;margin-top:2px}
+.ind-item strong{color:var(--white);font-weight:400}
+
+/* ═══════════════════════════════
+   ESCAPE PLAN
+═══════════════════════════════ */
+.route-trio{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+@media(max-width:700px){.route-trio{grid-template-columns:1fr}}
+.rt-card{background:rgba(61,187,116,.04);border:1px solid rgba(61,187,116,.16);border-radius:2px;padding:18px}
+.rt-step{font-family:'DM Mono',monospace;font-size:8px;color:var(--safe);letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}
+.rt-title{font-size:14px;font-weight:400;margin-bottom:7px}
+.rt-body{font-size:12px;color:var(--dim2);line-height:1.8}
+.rt-body strong{color:var(--white);font-weight:400}
+
+.boat-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:2px;overflow:hidden;margin:14px 0 8px}
+.bb-cell{background:var(--bg);padding:14px}
+.bb-num{font-size:22px;font-weight:300;color:var(--safe);line-height:1;margin-bottom:3px}
+.bb-label{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+
+/* ═══════════════════════════════
+   ADVISORY TABLE
+═══════════════════════════════ */
+.adv-row{display:grid;grid-template-columns:115px 1fr 34px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.adv-row:last-child{border-bottom:none}
+.adv-country{font-family:'DM Mono',monospace;font-size:10px;color:var(--white)}
+.adv-track{height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+.adv-fill{height:100%;border-radius:2px}
+.al1{background:var(--safe);width:25%}.al2{background:var(--gold);width:50%}.al3{background:var(--orange);width:75%}.al4{background:var(--red);width:100%}
+.adv-badge{font-family:'DM Mono',monospace;font-size:9px;text-align:right}
+.tl1{color:var(--safe)}.tl2{color:var(--gold)}.tl3{color:var(--orange)}.tl4{color:var(--red)}
+.adv-note{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);grid-column:2/4;margin-top:-3px;padding-bottom:4px}
+
+/* ═══════════════════════════════
+   VERDICT
+═══════════════════════════════ */
+#verdict{padding:80px 48px;background:var(--bg3);display:flex;flex-direction:column;align-items:center;text-align:center}
+@media(max-width:700px){#verdict{padding:56px 20px}}
+.v-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
+.v-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);max-width:820px;width:100%;margin:32px auto}
+@media(max-width:700px){.v-grid{grid-template-columns:1fr}}
+.v-cell{background:var(--bg);padding:24px 18px}
+.v-num{font-size:38px;font-weight:300;line-height:1;margin-bottom:4px}
+.v-unit{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px}
+.v-desc{font-size:11px;color:var(--dim);line-height:1.6}
+.v-dates{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.1em;margin-top:28px}
+.v-dates span{color:var(--safe)}
+
+.source-bar{padding:20px 48px;background:#060710;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);line-height:1.9}
+@media(max-width:700px){.source-bar{padding:16px 20px}}
+
+/* COLOR UTILS */
+.c-red{color:var(--red)}.c-blue{color:var(--blue)}.c-iran{color:var(--orange)}.c-greece{color:var(--safe)}.c-diplo{color:var(--gold)}.c-econ{color:#666}.c-nato{color:var(--purple)}.c-war{color:var(--red)}
+.d-red{background:var(--red)}.d-blue{background:var(--blue)}.d-iran{background:var(--orange)}.d-greece{background:var(--safe)}.d-diplo{background:var(--gold)}.d-econ{background:#666}.d-nato{background:var(--purple)}.d-war{background:var(--red)}
+
+/* IO fallback */
+.io-watch{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.io-watch.vis{opacity:1;transform:translateY(0)}
+</style>
+
+
+<nav id="mainnav">
+  <div class="nav-brand"><b>Greek Isles</b> &nbsp;·&nbsp; Safety Brief &nbsp;·&nbsp; June 2026</div>
+  <div class="nav-pill">GREECE: LEVEL 1</div>
+</nav>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section id="hero">
+  <div id="hero-map-bg"></div>
+  <div class="hero-vignette"></div>
+
+  <!-- Date counter: top right, Beat 10+ -->
+  <div id="date-counter">
+    <div id="dc-label">Days of war</div>
+    <div id="dc-wrap"><div id="dc-date">FEB 28</div></div>
+    <div id="dc-log"></div>
+  </div>
+
+  <!-- Bottom text: permanent, fades in sequentially -->
+  <div class="hero-text">
+    <!-- Overline — fades in at Beat 1 end -->
+    <!-- Overline: 3 typewriter beats on same visual line -->
+    <div id="h-overline" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;overflow:hidden;white-space:nowrap">
+      <span id="ov0" style="display:inline"></span><span id="ov1" style="display:inline"></span><span id="ov2" style="display:inline"></span>
+    </div>
+    <!-- Big serif phrases — fade in after overline -->
+    <div id="h-h1" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(38px,6vw,82px);font-weight:300;line-height:1.04;letter-spacing:-.02em;max-width:800px;margin-bottom:24px">
+      <div id="h-line1" style="opacity:0;transition:opacity 2.2s ease">35 days of conflict.</div>
+      <div id="h-line2" style="opacity:0;transition:opacity 2.2s ease"><em style="font-style:italic;color:var(--gold)">Mapped by location.</em></div>
+    </div>
+    <!-- Distance box — 3 items, horizontal, color-coded (db2/Dörtyol→Athens removed) -->
+    <div id="dist-box" style="display:flex;flex-wrap:wrap;gap:0;margin-bottom:16px;background:transparent">
+      <div class="dhcell" id="db0" style="--accent:rgba(192,57,43,0.85)">
+        <div class="dhc-lbl">Tehran → Athens</div>
+        <div class="dhc-val">2,100 MI</div>
+        <div class="dhc-sub" style="color:rgba(192,57,43,0.7)">missile origin distance</div>
+      </div>
+      <div class="dhcell" id="db2" style="--accent:rgba(224,112,48,0.85)">
+        <div class="dhc-lbl">Akrotiri &#x2192; Athens</div>
+        <div class="dhc-val">566 MI</div>
+        <div class="dhc-sub" style="color:rgba(224,112,48,0.7)">Hezbollah drone range · 638 MI</div>
+      </div>
+      <div class="dhcell" id="db1" style="--accent:rgba(167,139,250,0.85)">
+        <div class="dhc-lbl">Dörtyol &#x2192; Athens</div>
+        <div class="dhc-val">690 MI</div>
+        <div class="dhc-sub" style="color:rgba(167,139,250,0.75)">closest intercept</div>
+      </div>
+      <div class="dhcell" id="db3" style="--accent:rgba(192,57,43,0.85)">
+        <div class="dhc-lbl">Avg Strike Distance</div>
+        <div class="dhc-val">703 MI</div>
+        <div class="dhc-sub" style="color:rgba(192,57,43,0.7)">avg · all strike zones · Tehran to Athens · 1,534 MI</div>
+      </div>
+    </div>
+    <!-- Greece final + scroll hint — Beat 12 -->
+    <div id="greece-final">GREECE: LEVEL 1 — UNCHANGED THROUGHOUT</div>
+  </div>
+
+  <div id="scroll-hint">↓ scroll to explore</div>
+</section>
+
+<!-- ═══════════ CARDS ═══════════ -->
+<div class="cards">
+
+<!-- 01 THE WAR MAP -->
+<div class="card-section" id="cs-1">
+  <div class="card-header" onclick="toggleCard(1)">
+    <div class="card-num" id="cn-1">01</div>
+    <div class="card-headline">
+      <div class="card-title">Where it's<br><em>happening.</em></div>
+      <div class="card-sub">Full strike map · Feb 28 – Apr 5, 2026</div>
+    </div>
+    <div class="card-toggle open" id="ct-1">+</div>
+  </div>
+  <div class="card-body" id="cb-1">
+    <div class="card-inner revealed" id="ci-1">
+      <div class="two-col">
+        <div>
+          <div class="slide-left d1 io-watch">
+            <div class="mono-label">What happened</div>
+            <p class="body-p">February 28, 2026 — the US and Israel launched <strong>~900 coordinated strikes</strong> on Iranian military and leadership infrastructure. Khamenei was killed. Iran retaliated the same day with hundreds of missiles and drones at Gulf states, US military bases, and Israel.</p>
+            <p class="body-p">The dashed circle on the map is Iran's confirmed maximum strike radius (~1,500 miles from Tehran). <strong>Athens is plotted in green, outside the ring at ~2,100 miles.</strong></p>
+          </div>
+          <div class="slide-left d2 io-watch" style="margin-top:20px">
+            <div class="mono-label">Map key</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red)"></div>Iranian strike concentration</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></div>US / Israeli strikes</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:var(--safe);box-shadow:0 0 7px var(--safe)"></div>Athens — Level 1</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:var(--purple)"></div>4× NATO intercepts (Turkey)</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>Akrotiri, Cyprus — Hezbollah drone</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:14px;height:1px;border-top:1.5px dashed rgba(192,57,43,.55)"></div>Iran max strike radius</div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-right d2 io-watch">
+          <div class="card-map" id="war-map-wrap">
+            <div class="map-bar">Middle East / Eastern Mediterranean — Operation Epic Fury Theater</div>
+            <div id="war-map" style="width:100%;height:100%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 02 DISTANCE -->
+<div class="card-section" id="cs-2">
+  <div class="card-header" onclick="toggleCard(2)">
+    <div class="card-num" id="cn-2">02</div>
+    <div class="card-headline">
+      <div class="card-title">How far<br><em>is it, really?</em></div>
+      <div class="card-sub">San Antonio scale comparison</div>
+    </div>
+    <div class="card-toggle" id="ct-2">+</div>
+  </div>
+  <div class="card-body" id="cb-2">
+    <div class="card-inner" id="ci-2">
+      <div class="two-col">
+        <div>
+          <div class="slide-left d1 io-watch">
+            <div class="mono-label">If San Antonio = Athens</div>
+            <div class="analogy-box">
+              <div class="aline">The <strong>nearest missile debris</strong> fell in the equivalent of <strong>Washington, DC</strong> — ~880 miles northeast of San Antonio.</div>
+              <div class="aline">The <strong>missiles were launched</strong> from the equivalent of <strong>Halifax, Nova Scotia</strong> — ~2,100 miles northeast of San Antonio.</div>
+              <div class="aline">The <strong>Hezbollah drone strike</strong> on UK base Akrotiri (Cyprus) is the equivalent of <strong>Charlotte, NC</strong>. US issued advisory for Charlotte. San Antonio: unchanged.</div>
+              <div class="aquote">"Missiles fired from Halifax were intercepted over Washington, DC. San Antonio is reviewing its travel plans."</div>
+            </div>
+          </div>
+          <div class="slide-left d3 io-watch" style="margin-top:24px">
+            <div class="mono-label">Distance from Athens — to scale</div>
+            <div class="dist-row">
+              <div class="dist-top"><span class="dist-place">Akrotiri, Cyprus</span><span class="dist-mi" style="color:var(--orange)">~590 mi ≡ Charlotte, NC</span></div>
+              <div class="dist-track"><div class="dist-fill" id="df1" style="background:linear-gradient(to right,var(--safe),var(--orange))"></div></div>
+              <div class="dist-note">US issued L3 advisory for Cyprus. Greece L1: unchanged.</div>
+            </div>
+            <div class="dist-row">
+              <div class="dist-top"><span class="dist-place">Dörtyol, Turkey (missile debris)</span><span class="dist-mi" style="color:var(--purple)">~880 mi ≡ Washington, DC</span></div>
+              <div class="dist-track"><div class="dist-fill" id="df2" style="background:linear-gradient(to right,var(--safe),var(--purple))"></div></div>
+              <div class="dist-note">Nearest anything landed to Athens. 4× intercepted before reaching Turkey.</div>
+            </div>
+            <div class="dist-row">
+              <div class="dist-top"><span class="dist-place">Tehran, Iran (missile origin)</span><span class="dist-mi" style="color:var(--red)">~2,100 mi ≡ Halifax, NS</span></div>
+              <div class="dist-track"><div class="dist-fill" id="df3" style="background:linear-gradient(to right,rgba(192,57,43,.3),var(--red))"></div></div>
+              <div class="dist-note">Outside Iran's own confirmed max strike radius of ~1,500 miles.</div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-right d2 io-watch">
+          <div class="card-map" id="us-map-wrap" style="height:460px">
+            <div class="map-bar">North America — Proportional Scale (Northeast of San Antonio)</div>
+            <div id="us-map" style="width:100%;height:100%"></div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);margin-top:8px;line-height:1.9">
+            <div><span style="color:var(--safe)">●</span> San Antonio = Athens &nbsp;<span style="color:var(--orange)">●</span> Charlotte = Akrotiri &nbsp;<span style="color:var(--purple)">●</span> Washington DC = Dörtyol &nbsp;<span style="color:var(--red)">●</span> Halifax = Tehran</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 03 TIMELINE -->
+<div class="card-section" id="cs-3">
+  <div class="card-header" onclick="toggleCard(3)">
+    <div class="card-num" id="cn-3">03</div>
+    <div class="card-headline">
+      <div class="card-title">Every event,<br><em>in order.</em></div>
+      <div class="card-sub">35 days · Greece advisory: unchanged throughout</div>
+    </div>
+    <div class="card-toggle" id="ct-3">+</div>
+  </div>
+  <div class="card-body" id="cb-3">
+    <div class="card-inner" id="ci-3">
+      <div class="tl-controls slide-up d1 io-watch">
+        <button class="twirl-btn" id="twirl-btn" onclick="toggleTimeline(event)">
+          <em class="twirl-icon" id="twirl-icon">▶</em>
+          <span id="twirl-label">Expand all 35 events</span>
+        </button>
+        <div class="tl-key">
+          <span><div class="kdot d-war"></div> War</span>
+          <span><div class="kdot d-blue"></div> US/Israeli</span>
+          <span><div class="kdot d-iran"></div> Iranian</span>
+          <span><div class="kdot d-diplo"></div> Diplomatic</span>
+          <span><div class="kdot d-nato"></div> NATO intercept</span>
+          <span><div class="kdot d-greece"></div> Greece advisory</span>
+        </div>
+      </div>
+      <div class="tl-wrap slide-up d2 io-watch">
+        <div class="tl-spine"></div>
+        <div id="tl-events"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 04 MISSILE INTERCEPTS -->
+<div class="card-section" id="cs-4">
+  <div class="card-header" onclick="toggleCard(4)">
+    <div class="card-num" id="cn-4">04</div>
+    <div class="card-headline">
+      <div class="card-title">4 missiles.<br><em>4 intercepts.</em></div>
+      <div class="card-sub">None reached soil · None aimed at Greece</div>
+    </div>
+    <div class="card-toggle" id="ct-4">+</div>
+  </div>
+  <div class="card-body" id="cb-4">
+    <div class="card-inner" id="ci-4">
+      <div class="two-col">
+        <div>
+          <div class="slide-left d1 io-watch">
+            <div class="mono-label">The weapon — IRGC TEL Trucks</div>
+            <p class="body-p">Iran fires ballistic missiles from <strong>Transporter Erector Launchers (TELs)</strong> — large trucks with the missile and launch platform mounted on the back. They drive out of underground "Missile City" tunnel networks, erect the missile, fire, and attempt to return before being destroyed.</p>
+            <p class="body-p">With the campaign targeting these launchers, the US reports daily ballistic launches have dropped by <strong>86%</strong> since the war began. Iran is burning through a finite fleet of trucks and missiles — not building new ones.</p>
+          </div>
+          <div class="img-trio slide-up d2 io-watch">
+            <div class="img-card">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Shahab-3_2006.jpg/640px-Shahab-3_2006.jpg" alt="Iranian Shahab-3 ballistic missile on TEL truck" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.padding='32px 12px'">
+              <div class="img-cap"><strong>TEL Truck</strong><br>Shahab-3 on transporter erector launcher — the standard launch vehicle</div>
+            </div>
+            <div class="img-card">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/SM-3_launch_2_dd-963.jpg/640px-SM-3_launch_2_dd-963.jpg" alt="SM-3 Standard Missile launch from Navy destroyer" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.padding='32px 12px'">
+              <div class="img-cap"><strong>SM-3 Interceptor</strong><br>Standard Missile-3 launching from US Navy Arleigh Burke destroyer — the weapon that stopped all four</div>
+            </div>
+            <div class="img-card">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Iranian_underground_missile_silo.jpg/640px-Iranian_underground_missile_silo.jpg" alt="Iranian underground missile city tunnel" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.padding='32px 12px'">
+              <div class="img-cap"><strong>Underground "Missile City"</strong><br>IRGC tunnel network — missiles stored on rails, driven out before launch</div>
+            </div>
+          </div>
+          <div class="stat-grid slide-up d3 io-watch">
+            <div class="sg-cell"><div class="sg-num" style="color:var(--red)">4</div><div class="sg-label">Missiles fired toward Turkey</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">4</div><div class="sg-label">Intercepted by NATO</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--purple)">&lt;10</div><div class="sg-label">Minutes per intercept</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes near Greece</div></div>
+          </div>
+          <div class="slide-up d4 io-watch" style="margin-top:16px">
+            <p class="body-p" style="font-size:14px">A Turkish official stated the first missile may have been aimed at the <strong>RAF Akrotiri base in Cyprus</strong> — meaning the trajectory was toward Cyprus, not toward Greece. It veered into Turkish airspace and was intercepted there. Dates: Mar 4 · Mar 9 · Mar 13 · Mar 30.</p>
+          </div>
+        </div>
+        <div class="slide-right d2 io-watch">
+          <div class="card-map" id="med-map-wrap" style="height:460px">
+            <div class="map-bar">Eastern Mediterranean — Intercept Geography</div>
+            <div id="med-map" style="width:100%;height:100%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 05 ESCALATION SCENARIOS -->
+<div class="card-section" id="cs-5">
+  <div class="card-header" onclick="toggleCard(5)">
+    <div class="card-num" id="cn-5">05</div>
+    <div class="card-headline">
+      <div class="card-title">Possible<br><em>escalations.</em></div>
+      <div class="card-sub">Two scenarios · Indicators to watch · Iran weapons status</div>
+    </div>
+    <div class="card-toggle" id="ct-5">+</div>
+  </div>
+  <div class="card-body" id="cb-5">
+    <div class="card-inner" id="ci-5">
+      <div class="slide-up d1 io-watch" style="background:rgba(196,152,58,.04);border:1px solid var(--gold-dim);border-radius:2px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--dim2);line-height:1.8">
+        <span style="color:var(--gold);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:6px">Iran's weapons status</span>
+        The US/Israeli campaign specifically targeted Iran's missile <em>production infrastructure</em>. Iran is deploying existing stockpiles — not acquiring or building new systems. Their magazine is burning down, not filling up. Daily launches have fallen 86%.
+      </div>
+      <div class="sc-pair slide-up d2 io-watch">
+        <div class="sc-card orange">
+          <div class="sc-overline">Scenario A — Low probability</div>
+          <div class="sc-title" style="color:var(--orange)">Proxy Expansion Beyond Doctrine</div>
+          <div class="sc-body">Hezbollah or Iran-backed forces attempt strikes on European targets. The Akrotiri drone strike (Cyprus) is the one precedent — a <strong>UK military base</strong>. Greece has no comparable target. Iran's stated doctrine: US bases, Gulf states, Israel only.</div>
+          <div class="ind-list">
+            <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;padding:6px 0 4px">Watch for:</div>
+            <div class="ind-item"><span class="ind-n">01</span><div>Greece advisory changes from <strong>Level 1</strong></div></div>
+            <div class="ind-item"><span class="ind-n">02</span><div><strong>US Embassy Athens</strong> security alert upgrade</div></div>
+            <div class="ind-item"><span class="ind-n">03</span><div>NATO Article 4 consultations <strong>naming Greece or Aegean</strong></div></div>
+            <div class="ind-item"><span class="ind-n">04</span><div><strong>Souda Bay (Crete)</strong> escalation — only US asset near charter route</div></div>
+          </div>
+        </div>
+        <div class="sc-card red">
+          <div class="sc-overline">Scenario B — Very low probability</div>
+          <div class="sc-title" style="color:var(--red)">Full Regional Escalation</div>
+          <div class="sc-body">Iran triggers NATO Article 5. The 4 Turkey intercepts were deliberately not designed to trigger it — Hegseth confirmed this publicly. Iran is carefully avoiding that threshold. <strong>France, Spain, Italy all host larger US military presences</strong> than Greece and are rated Level 2.</div>
+          <div class="ind-list">
+            <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;padding:6px 0 4px">Watch for:</div>
+            <div class="ind-item"><span class="ind-n">01</span><div>NATO emergency summit — <strong>weeks of global news before affecting Greece</strong></div></div>
+            <div class="ind-item"><span class="ind-n">02</span><div>Greek government announces <strong>airspace closure or mobilization</strong></div></div>
+            <div class="ind-item"><span class="ind-n">03</span><div><strong>Charter broker contacts you proactively</strong> — they have more to lose than you</div></div>
+            <div class="ind-item"><span class="ind-n">04</span><div>US Worldwide Level 4 advisory — <strong>has never happened in history</strong></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 06 ESCAPE PLAN -->
+<div class="card-section" id="cs-6">
+  <div class="card-header" onclick="toggleCard(6)">
+    <div class="card-num" id="cn-6">06</div>
+    <div class="card-headline">
+      <div class="card-title">The escape<br><em>plan.</em></div>
+      <div class="card-sub">Your vessel · 3 steps · 21 airports</div>
+    </div>
+    <div class="card-toggle" id="ct-6">+</div>
+  </div>
+  <div class="card-body" id="cb-6">
+    <div class="card-inner" id="ci-6">
+      <div class="two-col">
+        <div>
+          <div class="slide-left d1 io-watch">
+            <div class="mono-label">Your vessel — Maiora 126</div>
+            <div class="boat-bar">
+              <div class="bb-cell"><div class="bb-num">29 kts</div><div class="bb-label">Top speed</div></div>
+              <div class="bb-cell"><div class="bb-num">22 kts</div><div class="bb-label">Cruise speed</div></div>
+              <div class="bb-cell"><div class="bb-num">1,500 nm</div><div class="bb-label">Range</div></div>
+            </div>
+            <p class="body-p" style="font-size:14px">Athens (Piraeus) → Santorini: ~130 nm = <strong>under 6 hours at cruise.</strong> You are on a private 38-meter vessel with a professional captain and crew. Not a public ferry. You are never stranded.</p>
+            <div class="boat-img-wrap slide-up d2 io-watch">
+              <img src="https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80" alt="Superyacht in blue Mediterranean waters" loading="lazy">
+              <div class="boat-img-overlay">M/Y Pareaki II · Maiora 126 · Twin MTU 3,700hp · 29 knots max</div>
+            </div>
+          </div>
+          <div class="slide-left d3 io-watch" style="margin-top:20px">
+            <div class="mono-label">If Poros 1988 concerns you</div>
+            <div style="background:rgba(61,187,116,.04);border:1px solid rgba(61,187,116,.16);border-radius:2px;padding:14px 16px;font-size:13px;color:var(--dim2);line-height:1.8">
+              The 1988 Poros attack targeted a <strong style="color:var(--white)">crowded public ferry</strong> with no security. You are on a <strong style="color:var(--white)">private charter with a professional crew, no public boarding, and the ability to depart any island in under 30 minutes.</strong> Categorically different.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="slide-right d2 io-watch">
+            <div class="mono-label">Three-step extraction</div>
+            <div class="route-trio" style="grid-template-columns:1fr">
+              <div class="rt-card">
+                <div class="rt-step">Step 01 — Monitor</div>
+                <div class="rt-title">STEP Enrollment</div>
+                <div class="rt-body">Enroll every traveler at <strong>step.state.gov</strong> before departure. Free. US Embassy Athens alerts reach your phone hours before the news cycle.</div>
+              </div>
+              <div class="rt-card">
+                <div class="rt-step">Step 02 — Reposition</div>
+                <div class="rt-title">Ionian Pivot Option</div>
+                <div class="rt-body">Ask broker now: can we pivot west to Corfu, Kefalonia, Lefkada? That's 400+ miles from Cyprus and Turkey. <strong>Get it as a contractual option before May 7.</strong></div>
+              </div>
+              <div class="rt-card">
+                <div class="rt-step">Step 03 — Extract</div>
+                <div class="rt-title">Island Airport Network</div>
+                <div class="rt-body"><strong>Santorini (JTR)</strong> and <strong>Mykonos (JMK)</strong>: direct June flights to London, Paris, Frankfurt. <strong>Paros / Naxos</strong>: 40 min to Athens. <strong>Athens (ATH)</strong>: direct to USA. Greece has 21 international airports.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 07 ADVISORY COMPARISON -->
+<div class="card-section" id="cs-7">
+  <div class="card-header" onclick="toggleCard(7)">
+    <div class="card-num" id="cn-7">07</div>
+    <div class="card-headline">
+      <div class="card-title">Safer than<br><em>France.</em></div>
+      <div class="card-sub">State Dept advisory comparison · 38-year record</div>
+    </div>
+    <div class="card-toggle" id="ct-7">+</div>
+  </div>
+  <div class="card-body" id="cb-7">
+    <div class="card-inner" id="ci-7">
+      <div class="two-col">
+        <div class="slide-left d1 io-watch">
+          <div class="mono-label">Why Greece stays at Level 1</div>
+          <p class="body-p">France, Italy, Spain, and the UK are all rated Level 2. Those countries host <strong>larger US military presences</strong> than Greece — and Iran targets military presence. Greece's relative absence of that infrastructure is structural, not accidental.</p>
+          <p class="body-p">Note: USS Oscar Austin — the destroyer that intercepted Iran's first Turkey-bound missile — is homeported in <strong>Rota, Spain.</strong> Spain is Level 2. Greece is Level 1.</p>
+          <div style="margin-top:18px;background:rgba(61,187,116,.04);border:1px solid rgba(61,187,116,.18);border-radius:2px;padding:14px 18px;font-size:13px;color:var(--dim2);line-height:1.8">
+            <div style="color:var(--safe);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px">38-year safety record</div>
+            Last tourist safety incident in the Greek Islands: <strong style="color:var(--white)">Poros ferry bombing, 1988.</strong> 38 years of regional wars, crises, and instability — zero tourist incidents in the islands.
+          </div>
+        </div>
+        <div class="slide-right d2 io-watch">
+          <div class="adv-row"><div class="adv-country" style="color:var(--safe)">GREECE</div><div><div class="adv-track"><div class="adv-fill al1"></div></div></div><div class="adv-badge tl1">L1</div><div class="adv-note">Normal precautions — unchanged through entire war</div></div>
+          <div class="adv-row"><div class="adv-country">FRANCE</div><div><div class="adv-track"><div class="adv-fill al2"></div></div></div><div class="adv-badge tl2">L2</div><div class="adv-note">Terrorism, civil unrest — hosts US military</div></div>
+          <div class="adv-row"><div class="adv-country">ITALY</div><div><div class="adv-track"><div class="adv-fill al2"></div></div></div><div class="adv-badge tl2">L2</div><div class="adv-note">Terrorism — hosts US military (Sigonella, Vicenza)</div></div>
+          <div class="adv-row"><div class="adv-country">SPAIN</div><div><div class="adv-track"><div class="adv-fill al2"></div></div></div><div class="adv-badge tl2">L2</div><div class="adv-note">Terrorism — USS Oscar Austin homeport is Rota, Spain</div></div>
+          <div class="adv-row"><div class="adv-country">UK</div><div><div class="adv-track"><div class="adv-fill al2"></div></div></div><div class="adv-badge tl2">L2</div><div class="adv-note">Terrorism — RAF Akrotiri (Cyprus) was the Hezbollah target</div></div>
+          <div class="adv-row"><div class="adv-country" style="color:var(--dim2)">CYPRUS</div><div><div class="adv-track"><div class="adv-fill al3"></div></div></div><div class="adv-badge tl3">L3</div><div class="adv-note">Elevated after Hezbollah drone · Rhodes is 250 mi west</div></div>
+          <div class="adv-row"><div class="adv-country" style="color:var(--dim2)">SAUDI ARABIA</div><div><div class="adv-track"><div class="adv-fill al3"></div></div></div><div class="adv-badge tl3">L3</div><div class="adv-note">Elevated — Iranian strikes confirmed</div></div>
+          <div class="adv-row"><div class="adv-country" style="color:var(--red)">IRAN</div><div><div class="adv-track"><div class="adv-fill al4"></div></div></div><div class="adv-badge tl4">L4</div><div class="adv-note">Do Not Travel</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /cards -->
+
+<!-- VERDICT -->
+<section id="verdict">
+  <div class="v-eyebrow">The data</div>
+  <div class="v-grid io-watch">
+    <div class="v-cell"><div class="v-num" style="color:var(--safe)">1</div><div class="v-unit">Greece Advisory</div><div class="v-desc">Level 1 — unchanged through 35+ days of active combat operations.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--safe)">Zero</div><div class="v-unit">Strikes near Greece</div><div class="v-desc">Every missile and drone: Gulf states, Israel, US military bases.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--gold)">2,100 mi</div><div class="v-unit">Athens → Tehran</div><div class="v-desc">San Antonio to Halifax. Outside Iran's confirmed max strike radius.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--purple)">4/4</div><div class="v-unit">NATO Intercepts</div><div class="v-desc">Four missiles toward Turkey. All four stopped in under 10 minutes each.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--dim2)">38 yrs</div><div class="v-unit">Since last incident</div><div class="v-desc">1988 Poros ferry. You are on a private charter. Categorically different.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--gold)">Jun 18</div><div class="v-unit">Departure</div><div class="v-desc">Maiora 126, from Athens. 29 knots and 1,500nm range if you need it.</div></div>
+  </div>
+  <div class="v-dates">DEPARTURE <span>June 18, 2026</span> &nbsp;·&nbsp; RETURN <span>June 28, 2026</span></div>
+</section>
+
+<div class="source-bar">
+  <strong style="color:var(--dim2)">Sources:</strong> US State Dept Travel Advisory Greece (Level 1, Apr 1 2026, US Embassy Athens) · Al Jazeera: NATO Turkey intercepts Mar 4, 9, 13, 30 2026 · USNI News: SM-3 / USS Oscar Austin Mar 4 2026 · Turkish Defense Ministry statements · The National: missile may have been aimed at Akrotiri · Middle East Eye: isolated Iranian forces · CENTCOM Admiral Cooper: 90% launch reduction · National Security Journal: TEL vulnerability analysis 2026 · ACLED Middle East Special Issue Mar 2026 · Wikipedia: 2026 Iran War, 2026 Turkey intercepts, Iranian ballistic missile program · Istion Yachting: Maiora 126 specs (29 kts, 22 kts cruise, 1500nm) · All events verified ≥2 independent sources.
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// INTERSECTION OBSERVER
+// ═══════════════════════════════════════
+const globalIO = new IntersectionObserver(es => es.forEach(e => {
+  if(e.isIntersecting){e.target.classList.add('vis');globalIO.unobserve(e.target);}
+}), {threshold:0.06});
+document.querySelectorAll('.io-watch').forEach(el => globalIO.observe(el));
+
+// ═══════════════════════════════════════
+// CARD TOGGLE — height animation
+// ═══════════════════════════════════════
+const openCards = new Set([1]); // card 1 starts open
+
+function toggleCard(n) {
+  const body = document.getElementById('cb-'+n);
+  const inner = document.getElementById('ci-'+n);
+  const toggle = document.getElementById('ct-'+n);
+  const num = document.getElementById('cn-'+n);
+  const isOpen = openCards.has(n);
+
+  if(isOpen) {
+    // Close
+    body.style.height = body.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      body.style.height = '0px';
+      inner.classList.remove('revealed');
+      toggle.classList.remove('open');
+      num.classList.remove('open-num');
+    });
+    openCards.delete(n);
+  } else {
+    // Open
+    body.style.height = '0px';
+    body.style.display = 'block';
+    requestAnimationFrame(() => {
+      const target = body.scrollHeight;
+      body.style.height = target + 'px';
+      body.style.transition = 'height .55s cubic-bezier(0.4,0,0.2,1)';
+      toggle.classList.add('open');
+      num.classList.add('open-num');
+      openCards.add(n);
+
+      // Reveal inner content after slight delay
+      setTimeout(() => {
+        inner.classList.add('revealed');
+        // Trigger staggered animations on child elements
+        inner.querySelectorAll('.slide-up,.slide-left,.slide-right,.fade-in-el').forEach(el => {
+          setTimeout(() => el.classList.add('in'), 50);
+        });
+        // Animate distance bars
+        if(n===2) animateDistBars();
+        // Invalidate maps
+        setTimeout(() => invalidateMaps(), 520);
+      }, 120);
+    });
+
+    // After open animation, remove fixed height
+    body.addEventListener('transitionend', function onTE() {
+      if(openCards.has(n)) body.style.height = 'auto';
+      body.removeEventListener('transitionend', onTE);
+    });
+  }
+}
+
+function animateDistBars() {
+  const bars = [{id:'df1',w:'28%'},{id:'df2',w:'42%'},{id:'df3',w:'100%'}];
+  bars.forEach((b,i) => {
+    setTimeout(() => {
+      const el = document.getElementById(b.id);
+      if(el) el.style.width = b.w;
+    }, i * 200 + 300);
+  });
+}
+
+function invalidateMaps() {
+  ['war-map-inst','us-map-inst','med-map-inst'].forEach(k => {
+    if(window[k]) { try { window[k].invalidateSize(); } catch(e){} }
+  });
+}
+
+// Initialize first card open state
+(function(){
+  const body = document.getElementById('cb-1');
+  if(body) body.style.height = 'auto';
+})();
+
+// ═══════════════════════════════════════
+// TILE LAYER
+// ═══════════════════════════════════════
+function darkTiles() {
+  return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd', maxZoom:18, detectRetina:true
+  });
+}
+
+// ═══════════════════════════════════════
+// ICON HELPERS
+// ═══════════════════════════════════════
+function pulseIcon(color, sz) {
+  sz = sz||12;
+  const core = Math.round(sz * 0.6);
+  const wrap = sz * 5;
+  // 3 pulses then stop: animation-iteration-count:3, then ring disappears
+  return L.divIcon({
+    className:'', iconSize:[wrap,wrap], iconAnchor:[wrap/2,wrap/2],
+    html:`<div style="position:relative;width:${wrap}px;height:${wrap}px;display:flex;align-items:center;justify-content:center">
+      <div style="width:${core}px;height:${core}px;background:${color};border-radius:50%;position:absolute;z-index:2;box-shadow:0 0 8px ${color},0 0 16px ${color}44;transform:scale(0);animation:dotIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards"></div>
+      <div style="width:${core}px;height:${core}px;background:${color};border-radius:50%;position:absolute;animation:lpA 1.8s cubic-bezier(0,0,.15,1) 3 forwards"></div>
+      <div style="width:${core}px;height:${core}px;background:${color};border-radius:50%;position:absolute;animation:lpA 1.8s cubic-bezier(0,0,.15,1) 0.7s 3 forwards;opacity:.4"></div>
+    </div><style>@keyframes lpA{0%{transform:scale(0);opacity:0}15%{opacity:.6}100%{transform:scale(5.5);opacity:0}}@keyframes dotIn{to{transform:scale(1)}}</style>`
+  });
+}
+function dotIcon(color, sz) {
+  sz=sz||9;
+  return L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+    html:`<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:50%"></div>`});
+}
+function typingMarker(lat, lon, text, color, sub, subColor) {
+    const sid = v => String(v).replace('.','_');
+    const mainId = `tm-main-${sid(lat)}-${sid(lon)}`;
+    const subId  = `tm-sub-${sid(lat)}-${sid(lon)}`;
+    const html = `<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 12px ${color}66;line-height:1.5">
+      <span id="${mainId}"></span>${sub?`<br><span id="${subId}" style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'};opacity:0;transition:opacity 0.4s ease">${sub}</span>`:''}
+    </div>`;
+    const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],html});
+    const marker = L.marker([lat,lon],{icon}).addTo(heroMap);
+    setTimeout(()=>{
+      const el = marker.getElement();
+      if(!el) return;
+      const mainSpan = el.querySelector(`#${mainId}`);
+      const subSpan  = el.querySelector(`#${subId}`);
+      if(mainSpan){
+        let i=0;
+        const iv=setInterval(()=>{
+          if(i<text.length){ mainSpan.textContent+=text[i++]; }
+          else {
+            clearInterval(iv);
+            if(subSpan) setTimeout(()=>{ subSpan.style.opacity='1'; },300);
+          }
+        },55);
+      }
+    },100);
+    return marker;
+  }
+
+function lbl(text, color, sub, subColor) {
+  return L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],
+    html:`<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 10px #060810">${text}${sub?`<br><span style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'}">${sub}</span>`:''}</div>`});
+}
+
+// ═══════════════════════════════════════
+// HERO ORCHESTRATOR — Beats 1-12
+// All geometry is Leaflet-native (no SVG overlay)
+// ═══════════════════════════════════════
+
+const heroEvents = [
+  {d:'Feb 28',s:'Operation Epic Fury — ~900 strikes. Khamenei killed.',cl:'er',lat:35.7,lon:51.4,r:500000,ic:false},
+  {d:'Mar 1', s:'Tanker Skylight struck — 2 killed, Strait of Hormuz',cl:'er',lat:25.3,lon:56.4,r:170000,ic:false},
+  {d:'Mar 3', s:'Hezbollah drone strikes RAF Akrotiri, Cyprus',cl:'eo',lat:34.6,lon:32.97,r:160000,ic:false},
+  {d:'Mar 4', s:'NATO intercept #1 — missile destroyed over Turkey',cl:'ep',lat:36.8,lon:36.2,r:175000,ic:true},
+  {d:'Mar 5', s:'Iran: 500+ missiles, 2,000+ drones — all Gulf/Israel',cl:'er',lat:26,lon:51,r:380000,ic:false},
+  {d:'Mar 7', s:'Israeli strikes on Tehran oil depots',cl:'eb',lat:35.7,lon:51.4,r:250000,ic:false},
+  {d:'Mar 8', s:'Brent crude over $100. Hormuz traffic down 70%.',cl:'ed',lat:27,lon:50,r:110000,ic:false},
+  {d:'Mar 9', s:'NATO intercept #2 over Turkish airspace',cl:'ep',lat:36.8,lon:36.8,r:170000,ic:true},
+  {d:'Mar 12',s:'21 confirmed tanker attacks in Strait of Hormuz',cl:'er',lat:25,lon:56.5,r:230000,ic:false},
+  {d:'Mar 13',s:'US strikes Kharg Island — Iran main oil hub',cl:'eb',lat:29.2,lon:50.3,r:230000,ic:false},
+  {d:'Mar 13',s:'NATO intercept #3 — near Incirlik Air Base',cl:'ep',lat:37.0,lon:35.4,r:170000,ic:true},
+  {d:'Mar 22',s:'Wave of US/Israeli strikes on Tehran',cl:'eb',lat:35.7,lon:51.4,r:320000,ic:false},
+  {d:'Mar 25',s:'Greece Level 1 reconfirmed — 25 days of war',cl:'eg',lat:37.97,lon:23.7,r:170000,ic:false},
+  {d:'Mar 28',s:'Iran strikes Prince Sultan AB, Saudi — 29 injured',cl:'er',lat:24.9,lon:46.7,r:200000,ic:false},
+  {d:'Mar 28',s:'UAE: 414 missiles and 1,914 drones since Feb 28',cl:'ed',lat:24.5,lon:54.4,r:130000,ic:false},
+  {d:'Mar 30',s:'NATO intercept #4 — Dörtyol, Turkey',cl:'ep',lat:36.8,lon:36.2,r:175000,ic:true},
+  {d:'Apr 5', s:'Greece Level 1 confirmed — 35 days of conflict.',cl:'eg',lat:37.97,lon:23.7,r:170000,ic:false},
+];
+
+let heroMap;
+const heroLayers = [];          // all layers added during beats 3-8
+const beatRef = {};             // named refs for cross-beat fading
+
+// ── Leaflet animation helpers ──
+
+function animateLine(coords, opts, drawMs) {
+  const line = L.polyline(coords, opts).addTo(heroMap);
+  heroLayers.push(line);
+  setTimeout(() => {
+    const path = line.getElement();
+    if (!path) return;
+    // visibility:hidden suppresses all painting — no flash possible
+    path.style.visibility = 'hidden';
+    const len = path.getTotalLength();
+    path.style.strokeDasharray = len + ' ' + len;
+    path.style.strokeDashoffset = len;
+    path.style.transition = 'none';
+    requestAnimationFrame(() => {
+      // Now reveal and start drawing in same frame
+      path.style.visibility = 'visible';
+      path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
+      path.style.strokeDashoffset = '0';
+    });
+  }, 60);
+  return line;
+}
+
+function fadeLayer(layer, ms) {
+  const el = layer.getElement ? layer.getElement() : null;
+  if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
+  setTimeout(() => { try { heroMap.removeLayer(layer); } catch(e){} }, ms + 100);
+}
+
+function fadeMarker(marker, ms) {
+  const el = marker.getElement ? marker.getElement() : null;
+  if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
+  setTimeout(() => { try { heroMap.removeLayer(marker); } catch(e){} }, ms + 100);
+}
+
+function addHeroLayer(layer) { heroLayers.push(layer); return layer; }
+
+function distBoxShow(){document.getElementById('dist-box').classList.add('show');}
+function distRowIn(n,delay){setTimeout(()=>{const r=document.getElementById('db'+n);if(r){r.classList.add('dhcell');r.classList.add('in');}},delay);}
+
+// BEAT 1: Typewriter
+function runTypewriter(cb){
+  const overlineEl = document.getElementById('h-overline');
+  if(overlineEl) overlineEl.style.opacity='1';
+
+  const cursor = document.createElement('span');
+  cursor.id = 'type-cursor';
+  cursor.textContent = '\u2588';
+  cursor.style.cssText = 'color:rgba(196,152,58,0.9);animation:cursorBlink .6s step-end infinite;margin-left:2px';
+  if(!document.getElementById('cursor-style')){
+    const st=document.createElement('style');
+    st.id='cursor-style';
+    st.textContent='@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}';
+    document.head.appendChild(st);
+  }
+  if(overlineEl) overlineEl.appendChild(cursor);
+
+  setTimeout(()=>{
+    const beats = [
+      {span:'ov0', text:'OPERATION EPIC FURY', msPer:44, pauseAfter:480},
+      {span:'ov1', text:' \u00b7 GEOGRAPHIC SECURITY BRIEF', msPer:44, pauseAfter:480},
+      {span:'ov2', text:' \u00b7 FAMILY SAFETY PLAN \u00b7 JUNE 2026', msPer:40, pauseAfter:0},
+    ];
+
+    function typeBeat(beatIdx, onDone) {
+      if(beatIdx >= beats.length){ onDone(); return; }
+      const b = beats[beatIdx];
+      const el = document.getElementById(b.span);
+      if(!el){ typeBeat(beatIdx+1, onDone); return; }
+      if(cursor) el.appendChild(cursor);
+      let i = 0;
+      function nextChar(){
+        if(i >= b.text.length){
+          setTimeout(()=>typeBeat(beatIdx+1, onDone), b.pauseAfter);
+          return;
+        }
+        el.insertBefore(document.createTextNode(b.text[i]), cursor);
+        i++;
+        setTimeout(nextChar, b.msPer + (Math.random()*12-6));
+      }
+      nextChar();
+    }
+
+    typeBeat(0, ()=>{
+      if(cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);
+      const l1 = document.getElementById('h-line1');
+      const l2 = document.getElementById('h-line2');
+      setTimeout(()=>{ if(l1) l1.style.opacity='1'; }, 800);
+      setTimeout(()=>{
+        if(l2) l2.style.opacity='1';
+        document.getElementById('hero-map-bg').classList.add('map-ready');
+        setTimeout(cb, 2600);
+      }, 1700);
+    });
+  }, 1600);
+}
+
+// BEAT 2: Map tiles fade in
+function beatMapIn(cb){
+  const mapEl = document.getElementById('hero-map-bg');
+  // Wait for the map's opacity transition to fully complete
+  mapEl.addEventListener('transitionend', function onDone(e) {
+    if (e.propertyName !== 'opacity') return;
+    mapEl.removeEventListener('transitionend', onDone);
+    cb();
+  });
+}
+
+// BEAT 3: Athens — pulse dot only
+function beatAthens(cb){
+  const pulse = L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',11)}).addTo(heroMap);
+  addHeroLayer(pulse);
+  setTimeout(cb, 600);
+}
+
+// BEAT 4: Tehran — red dot only
+function beatTehran(cb){
+  const dot = L.marker([35.7,51.4],{icon:pulseIcon('#c0392b',12)}).addTo(heroMap);
+  addHeroLayer(dot);
+  setTimeout(cb, 600);
+}
+
+// BEAT 4b: Athens box opens and types
+  function beatAthensBox(cb){
+    const html = `<div style="
+        display:inline-flex;
+        align-items:center;
+        border:1px solid rgba(61,187,116,0.5);
+        border-radius:2px;
+        overflow:visible;
+        box-shadow:0 0 14px rgba(61,187,116,0.15);
+      "><div id="athens-slide" style="
+          overflow:hidden;
+          width:0px;
+          transition:width 0.55s cubic-bezier(0.4,0,0.2,1);
+        "><div style="
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            width:96px;
+            font-family:'DM Mono',monospace;
+            font-size:13px;
+            letter-spacing:.14em;
+            color:#3dbb74;
+            text-transform:uppercase;
+            background:rgba(61,187,116,0.08);
+            padding:5px 7px;
+            white-space:nowrap;
+            text-shadow:0 0 14px rgba(61,187,116,0.4);
+          ">ATHENS</div></div></div>`;
+    const icon = L.divIcon({
+      className:'',
+      iconSize:[0,0],
+      iconAnchor:[108,44],
+      html
+    });
+    beatRef.athensLabel = L.marker([37.97,23.7],{icon}).addTo(heroMap);
+    addHeroLayer(beatRef.athensLabel);
+    setTimeout(()=>{
+      const el = beatRef.athensLabel.getElement();
+      if(!el) return;
+      const slide = el.querySelector('#athens-slide');
+      if(slide) slide.style.width = '96px';
+    }, 80);
+    setTimeout(cb, 1000);
+  }
+
+// BEAT 4c: Tehran box opens and types
+  function beatTehranBox(cb){
+    const html = `<div style="
+        display:inline-flex;
+        align-items:center;
+        border:1px solid rgba(192,57,43,0.55);
+        border-radius:2px;
+        overflow:visible;
+        box-shadow:0 0 14px rgba(192,57,43,0.15);
+      "><div id="tehran-slide" style="
+          overflow:hidden;
+          width:0px;
+          transition:width 0.55s cubic-bezier(0.4,0,0.2,1);
+        "><div style="
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            width:106px;
+            font-family:'DM Mono',monospace;
+            font-size:13px;
+            letter-spacing:.14em;
+            color:#c0392b;
+            text-transform:uppercase;
+            background:rgba(192,57,43,0.08);
+            padding:5px 7px;
+            white-space:nowrap;
+            text-shadow:0 0 14px rgba(192,57,43,0.4);
+          ">TEHRAN</div></div></div>`;
+    const icon = L.divIcon({
+      className:'',
+      iconSize:[0,0],
+      iconAnchor:[-14,-18],
+      html
+    });
+    beatRef.tehranLabel = L.marker([35.7,51.4],{icon}).addTo(heroMap);
+    addHeroLayer(beatRef.tehranLabel);
+    setTimeout(()=>{
+      const el = beatRef.tehranLabel.getElement();
+      if(!el) return;
+      const slide = el.querySelector('#tehran-slide');
+      if(slide) slide.style.width = '106px';
+    }, 80);
+    setTimeout(cb, 1000);
+  }
+
+// BEAT 5: Tehran→Athens line + circle (raw SVG overlay, sequenced)
+function beatLineAT(cb){
+  const mapEl = document.getElementById('hero-map-bg');
+  const tehPt = heroMap.latLngToContainerPoint([35.7,  51.4]);
+  const athPt = heroMap.latLngToContainerPoint([37.97, 23.7]);
+  const rPx   = Math.sqrt(Math.pow(athPt.x-tehPt.x,2)+Math.pow(athPt.y-tehPt.y,2));
+  const midPt = { x:(tehPt.x+athPt.x)/2, y:(tehPt.y+athPt.y)/2 };
+
+  const old = document.getElementById('hero-overlay-svg');
+  if(old) old.remove();
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id = 'hero-overlay-svg';
+  svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
+
+  // SOLID LINE — pathLength=1 lets us animate with dashoffset 1→0
+  const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
+  lineEl.setAttribute('x1', tehPt.x);
+  lineEl.setAttribute('y1', tehPt.y);
+  lineEl.setAttribute('x2', athPt.x);
+  lineEl.setAttribute('y2', athPt.y);
+  lineEl.setAttribute('stroke','rgba(192,57,43,0.8)');
+  lineEl.setAttribute('stroke-width','1.5');
+  lineEl.setAttribute('pathLength','1');
+  lineEl.style.strokeDasharray = '1';
+  lineEl.style.strokeDashoffset = '1';
+
+  // CIRCLE RING — same pathLength trick
+  const circRing = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circRing.setAttribute('cx', tehPt.x);
+  circRing.setAttribute('cy', tehPt.y);
+  circRing.setAttribute('r',  rPx);
+  circRing.setAttribute('fill','none');
+  circRing.setAttribute('stroke','rgba(192,57,43,0.55)');
+  circRing.setAttribute('stroke-width','1.2');
+  circRing.setAttribute('pathLength','1');
+  circRing.style.strokeDasharray = '1';
+  circRing.style.strokeDashoffset = '1';
+
+  // CIRCLE FILL — fades in after ring draws
+  const circFill = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circFill.setAttribute('cx', tehPt.x);
+  circFill.setAttribute('cy', tehPt.y);
+  circFill.setAttribute('r',  rPx);
+  circFill.setAttribute('fill','rgba(192,57,43,0.06)');
+  circFill.setAttribute('stroke','none');
+  circFill.style.opacity = '0';
+
+  svg.appendChild(circFill);
+  svg.appendChild(circRing);
+  svg.appendChild(lineEl);
+  heroMap.getPanes().overlayPane.appendChild(svg);
+
+  // Reposition SVG elements when map moves (keeps overlay geo-anchored)
+  function repositionOverlay(){
+    const t = heroMap.latLngToContainerPoint([35.7,  51.4]);
+    const a = heroMap.latLngToContainerPoint([37.97, 23.7]);
+    const r = Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2));
+    lineEl.setAttribute('x1',t.x); lineEl.setAttribute('y1',t.y);
+    lineEl.setAttribute('x2',a.x); lineEl.setAttribute('y2',a.y);
+    circRing.setAttribute('cx',t.x); circRing.setAttribute('cy',t.y);
+    circRing.setAttribute('r',r);
+    circFill.setAttribute('cx',t.x); circFill.setAttribute('cy',t.y);
+    circFill.setAttribute('r',r);
+  }
+  heroMap.on('move zoom', repositionOverlay);
+  heroMap.on('moveend zoomend', repositionOverlay);
+
+  const lineMs = 1400;
+  const circMs = 6500;
+
+  // STEP 1: Draw line
+  // setTimeout(100) + double rAF = confirmed working approach
+  setTimeout(()=>{
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      lineEl.style.transition = 'stroke-dashoffset ' + lineMs + 'ms linear';
+      lineEl.style.strokeDashoffset = '0';
+    }));
+  }, 100);
+
+  // STEP 2: Distance label appears above line midpoint, after line finishes
+  setTimeout(()=>{
+    const upLatLng = heroMap.containerPointToLatLng([midPt.x, midPt.y - 70]);
+    const html = '<div style="display:inline-flex;align-items:center;border:1px solid rgba(192,57,43,0.45);border-radius:2px;overflow:visible"><div id="dist-wrap" style="overflow:hidden;width:0px;height:26px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1)"><div id="dist-inner" style="font-family:\'DM Mono\',monospace;font-size:13px;letter-spacing:.1em;color:rgba(192,57,43,0.9);background:rgba(192,57,43,0.08);padding:4px 9px;white-space:nowrap;line-height:18px"></div></div></div>';
+    const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[88,0],html});
+    beatRef.labelAT = L.marker(upLatLng,{icon}).addTo(heroMap);
+    addHeroLayer(beatRef.labelAT);
+    setTimeout(()=>{
+      const el = beatRef.labelAT.getElement();
+      if(!el) return;
+      const wrap  = el.querySelector('#dist-wrap');
+      const inner = el.querySelector('#dist-inner');
+      if(!wrap||!inner) return;
+      wrap.style.width = '176px';
+      setTimeout(()=>{
+        const label = 'DISTANCE: 2,100 MI';
+        let i=0;
+        const type=()=>{
+          if(i<label.length){
+            inner.textContent+=label[i++];
+            setTimeout(type,45+Math.random()*20);
+          } else {
+            // Append comparison line OUTSIDE the red box — no background
+            const outer = el;
+            const ref = document.createElement('div');
+            ref.style.cssText = 'margin-top:5px;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:.09em;color:rgba(255,255,255,0.82);text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810;line-height:1.4';
+            outer.appendChild(ref);
+            const ref2 = 'San Antonio \u2192 Halifax, NS \u00b7 2,171 mi';
+            let j=0;
+            const type2=()=>{ if(j<ref2.length){ ref.textContent+=ref2[j++]; setTimeout(type2,35+Math.random()*15); } };
+            setTimeout(type2,300);
+          }
+        };
+        type();
+      }, 620);
+    }, 80);
+  }, lineMs + 400);
+
+  // STEP 3: Draw circle after label finishes typing (~1.8s after label appears)
+  const circStart = lineMs + 2300;
+  setTimeout(()=>{
+    setTimeout(()=>{
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        circRing.style.transition = 'stroke-dashoffset ' + circMs + 'ms linear';
+        circRing.style.strokeDashoffset = '0';
+      }));
+    }, 100);
+  }, circStart);
+
+  // STEP 4: Fill fades in after ring finishes
+  setTimeout(()=>{
+    circFill.style.transition = 'opacity 1.2s ease';
+    circFill.style.opacity = '1';
+  }, circStart + circMs + 300);
+
+  // STEP 5: 2s hold, then fade line
+  // Fade line + label together 2s after label finishes typing (~3600ms + 2000ms = 5600ms)
+  // cb fires simultaneously to start map pan during the fade
+  const fadeAt = lineMs + 6200;
+  setTimeout(()=>{
+    // Fade the line
+    lineEl.style.transition = 'opacity 1s ease';
+    lineEl.style.opacity = '0';
+    // Fade the distance label marker
+    const labelEl = beatRef.labelAT ? beatRef.labelAT.getElement() : null;
+    if(labelEl){ labelEl.style.transition = 'opacity 1s ease'; labelEl.style.opacity = '0'; }
+  }, fadeAt);
+
+  distBoxShow();
+  distRowIn(0, lineMs + 300);
+  setTimeout(cb, fadeAt);
+}
+
+// BEAT 6: Fade AT line, draw Tehran→Dörtyol in purple, fill circle, box row 1
+function beatLineTD(cb){
+  // Fade previous line + label
+  setTimeout(()=>{
+    if(beatRef.lineAT) fadeLayer(beatRef.lineAT, 450);
+    if(beatRef.labelAT) fadeMarker(beatRef.labelAT, 350);
+  },160);
+  setTimeout(()=>{
+    // Dörtyol dot
+    const dot = L.marker([36.8,36.2],{icon:dotIcon('#a78bfa',8)}).addTo(heroMap);
+    addHeroLayer(dot);
+    // Tehran→Dörtyol line (purple)
+    beatRef.lineTD = animateLine(
+      [[35.7,51.4],[36.8,36.2]],
+      {color:'rgba(167,139,250,0.65)',weight:1.5,dashArray:'5 4'},
+      400
+    );
+    // Dörtyol fill circle
+    setTimeout(()=>{
+      const ring = L.circle([36.8,36.2],{radius:175000,color:'rgba(167,139,250,0.7)',weight:1.5,dashArray:'5 4',fill:false}).addTo(heroMap);
+      addHeroLayer(ring);
+      const fill = L.circle([36.8,36.2],{radius:175000,color:'transparent',fill:true,fillColor:'#a78bfa',fillOpacity:0.06}).addTo(heroMap);
+      addHeroLayer(fill);
+    },420);
+    // Labels
+    setTimeout(()=>{
+      beatRef.labelTD = L.marker([36.2,43.5],{icon:lbl('1,200 MI \u00b7 880 FROM ATHENS','rgba(167,139,250,0.85)')}).addTo(heroMap);
+      addHeroLayer(beatRef.labelTD);
+      const dlbl = L.marker([36.95,36.3],{icon:lbl('D\u00d6RTYOL','rgba(167,139,250,0.65)')}).addTo(heroMap);
+      addHeroLayer(dlbl);
+    },420);
+    distRowIn(1,180);
+  },500);
+  setTimeout(cb,3200);
+}
+
+// BEAT 7: Akrotiri dot + line to Athens, box row 2
+function beatAkrotiri(cb){
+  // Fade TD line
+  setTimeout(()=>{ if(beatRef.lineTD) fadeLayer(beatRef.lineTD, 450); },80);
+  setTimeout(()=>{
+    // Akrotiri dot
+    const dot = L.marker([34.6,32.97],{icon:dotIcon('#e07030',8)}).addTo(heroMap);
+    addHeroLayer(dot);
+    const albl = L.marker([34.5,33.1],{icon:lbl('AKROTIRI','rgba(224,112,48,0.65)')}).addTo(heroMap);
+    addHeroLayer(albl);
+    // Line Akrotiri→Athens
+    beatRef.lineAkr = animateLine(
+      [[34.6,32.97],[37.97,23.7]],
+      {color:'rgba(224,112,48,0.55)',weight:1.2,dashArray:'4 4'},
+      380
+    );
+    // Distance label
+    setTimeout(()=>{
+      beatRef.labelAkr = L.marker([36.3,28],{icon:lbl('590 MI','rgba(224,112,48,0.7)')}).addTo(heroMap);
+      addHeroLayer(beatRef.labelAkr);
+    },400);
+  },450);
+  setTimeout(cb,3200);
+}
+
+// BEAT 8: Map fills with strike zones, labels, zoom
+function beatMapFill(cb){
+  // Remove the SVG overlay before zooming (it will be repositioned by move listener)
+  // Fade all beat 3-7 layers
+  setTimeout(()=>{
+    heroLayers.forEach(ly=>{
+      try{
+        const el=ly.getElement?ly.getElement():null;
+        if(el){el.style.transition='opacity 1.2s ease';el.style.opacity='0';}
+        setTimeout(()=>{try{heroMap.removeLayer(ly);}catch(e){}},1400);
+      }catch(e){}
+    });
+    heroLayers.length=0;
+  },200);
+
+  // Persistent labels for key locations
+  const markerDelay=[
+    [35.7,52,   lbl('TEHRAN','rgba(192,57,43,0.8)','\u007e2,100 mi from Athens'),550],
+    [37.97,23.7,lbl('ATHENS','rgba(61,187,116,0.75)','Level 1 \u00b7 unchanged'),700],
+  ];
+  markerDelay.forEach(([la,lo,icon,del])=>{
+    setTimeout(()=>L.marker([la,lo],{icon}).addTo(heroMap),del);
+  });
+  setTimeout(()=>{
+    L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',8)}).addTo(heroMap);
+  },700);
+
+  // Fly to war zone — slow, smooth, Athens visible upper-left
+  setTimeout(()=>heroMap.flyTo([27,43],5.28,{duration:2.2,easeLinearity:0.2}),900);
+  setTimeout(cb,5200);
+}
+
+// BEAT 9+: Date counter ticks through all 17 events
+function beatDateCounter(){
+  document.getElementById('mainnav').classList.add('nav-in');
+  document.getElementById('date-counter').classList.add('show');
+
+  const allDates=[];
+  const d0=new Date(2026,1,28), dN=new Date(2026,3,5);
+  for(let d=new Date(d0);d<=dN;d.setDate(d.getDate()+1)) allDates.push(new Date(d));
+  const MON=['Jan','Feb','Mar','Apr'];
+
+  let idx=0, evIdx=0, speed=600;
+  const dcDate=document.getElementById('dc-date');
+  const dcWrap=document.getElementById('dc-wrap');
+  const dcLog=document.getElementById('dc-log');
+  let firstInterceptSeen = false;
+
+  function evColor(cl){
+    return cl==='ep'?'#a78bfa':cl==='eg'?'#3dbb74':cl==='eb'?'#5aa0e8':cl==='eo'?'#e07030':'#c0392b';
+  }
+
+  function tick(){
+    if(idx>=allDates.length){
+      // All dates done. Show Greece final + scroll hint.
+      setTimeout(()=>{
+        document.getElementById('greece-final').classList.add('show');
+        const hStrip=document.getElementById('h-strip');
+        if(hStrip) hStrip.classList.add('in');
+      },600);
+      // Heavy pause (3s) then Akrotiri drone marker + scroll hint
+      setTimeout(()=>{
+        L.marker([34.6,32.97],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
+        // Also show scroll hint
+        document.getElementById('scroll-hint').classList.add('show');
+      },3000);
+      // Cell 2 (avg strike distance) slides in 1s after dates complete
+      setTimeout(()=>distRowIn(3,0), 1000);
+      return;
+    }
+
+    const d=allDates[idx];
+    const label=MON[d.getMonth()]+' '+d.getDate();
+    dcDate.textContent=label;
+
+    const todayEvs=[];
+    while(evIdx<heroEvents.length && heroEvents[evIdx].d===label){
+      todayEvs.push(heroEvents[evIdx]); evIdx++;
+    }
+
+    let delay=speed;
+
+      if(todayEvs.length===0){
+        const emptyRow=document.createElement('div');
+        emptyRow.className='dlr empty';
+        emptyRow.textContent=label;
+        dcLog.appendChild(emptyRow);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>emptyRow.classList.add('in')));
+      }
+
+    if(todayEvs.length>0){
+      delay=Math.max(speed,350);
+      const ev=todayEvs[0];
+
+      dcWrap.className='';
+      if(ev.cl==='er') dcWrap.classList.add('fr');
+      else if(ev.cl==='ep') dcWrap.classList.add('fp');
+      else if(ev.cl==='eg') dcWrap.classList.add('fg');
+      setTimeout(()=>dcWrap.className='',320);
+
+      todayEvs.forEach((ev2,i)=>{
+        setTimeout(()=>{
+          // Add log row
+          const row=document.createElement('div');
+          row.className='dlr '+ev2.cl;
+          row.textContent=ev2.d+' \u2014 '+ev2.s.substring(0,55)+(ev2.s.length>55?'\u2026':'');
+          dcLog.appendChild(row);
+          requestAnimationFrame(()=>requestAnimationFrame(()=>row.classList.add('in')));
+
+          // Small pulse dot on map for this event
+          // divIcon dot — scales from center of its own coordinate (not SVG origin)
+          const dotSize = 14;
+          const dotHalf = dotSize / 2;
+          const dotColor = evColor(ev2.cl);
+          const dotHtml = `<div style="
+              width:${dotSize}px;height:${dotSize}px;
+              background:${dotColor};
+              border-radius:50%;
+              box-shadow:0 0 8px ${dotColor},0 0 16px ${dotColor}88;
+              transform:scale(0);
+              animation:evDotIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+            "></div>
+            <div style="
+              position:absolute;top:0;left:0;
+              width:${dotSize}px;height:${dotSize}px;
+              border-radius:50%;
+              border:2px solid ${dotColor};
+              transform:scale(0);
+              opacity:1;
+              animation:evDotEcho 1.4s ease-out forwards;
+            "></div>
+            <style>
+              @keyframes evDotIn{to{transform:scale(1)}}
+              @keyframes evDotEcho{to{transform:scale(6);opacity:0}}
+            </style>`;
+          const flash = L.marker([ev2.lat,ev2.lon],{
+            icon: L.divIcon({
+              className:'',
+              iconSize:[dotSize,dotSize],
+              iconAnchor:[dotHalf,dotHalf],
+              html: dotHtml
+            })
+          }).addTo(heroMap);
+          // Fade to dim after flash
+          setTimeout(()=>{
+            const flashEl = flash.getElement ? flash.getElement() : null;
+            if(flashEl){ flashEl.style.transition='opacity 0.6s ease'; flashEl.style.opacity='0.5'; }
+          }, 1500);
+
+            // Feb 28: burst cluster — 8 dots across Iran strike targets
+            if(ev2.d==='Feb 28'){
+              const burstTargets=[
+                [33.7,48.8,'#c0392b'],  // Fordo nuclear site area
+                [35.2,52.1,'#c0392b'],  // Parchin military complex
+                [34.0,49.9,'#c0392b'],  // Isfahan nuclear
+                [36.3,59.6,'#c0392b'],  // Mashhad IRGC
+                [32.6,51.7,'#c0392b'],  // Isfahan air defense
+                [31.3,48.7,'#c0392b'],  // Ahvaz oil/military
+                [35.8,50.5,'#c0392b'],  // Tehran western outskirts
+                [34.8,48.5,'#c0392b'],  // Kermanshah missile base
+              ];
+              burstTargets.forEach(([lat,lon,col],bi)=>{
+                setTimeout(()=>{
+                  const bSize=8, bHalf=4;
+                  const bHtml=`<div style="width:${bSize}px;height:${bSize}px;background:${col};border-radius:50%;box-shadow:0 0 6px ${col};transform:scale(0);animation:evDotIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards"></div><div style="position:absolute;top:0;left:0;width:${bSize}px;height:${bSize}px;border-radius:50%;border:1.5px solid ${col};transform:scale(0);opacity:1;animation:evDotEcho 1.2s ease-out forwards"></div><style>@keyframes evDotIn{to{transform:scale(1)}}@keyframes evDotEcho{to{transform:scale(5);opacity:0}}</style>`;
+                  L.marker([lat,lon],{icon:L.divIcon({className:'',iconSize:[bSize,bSize],iconAnchor:[bHalf,bHalf],html:bHtml})}).addTo(heroMap);
+                },bi*120);
+              });
+            }
+
+            // Mar 5: cluster — 6 dots across Gulf/Israel theater for massive strike day
+            if(ev2.d==='Mar 5'){
+              const clusterTargets=[
+                [26.2,50.6,'#c0392b'],  // Bahrain area
+                [24.5,54.3,'#c0392b'],  // UAE/Abu Dhabi
+                [25.3,56.4,'#c0392b'],  // Hormuz strait
+                [31.8,35.2,'#c0392b'],  // Israel/Negev
+                [31.0,34.8,'#c0392b'],  // Southern Israel
+              ];
+              clusterTargets.forEach(([lat,lon,col],ci)=>{
+                setTimeout(()=>{
+                  const cSize=9, cHalf=4;
+                  const cHtml=`<div style="width:${cSize}px;height:${cSize}px;background:${col};border-radius:50%;box-shadow:0 0 7px ${col};transform:scale(0);animation:evDotIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards"></div><div style="position:absolute;top:0;left:0;width:${cSize}px;height:${cSize}px;border-radius:50%;border:1.5px solid ${col};transform:scale(0);opacity:1;animation:evDotEcho 1.3s ease-out forwards"></div><style>@keyframes evDotIn{to{transform:scale(1)}}@keyframes evDotEcho{to{transform:scale(5);opacity:0}}</style>`;
+                  L.marker([lat,lon],{icon:L.divIcon({className:'',iconSize:[cSize,cSize],iconAnchor:[cHalf,cHalf],html:cHtml})}).addTo(heroMap);
+                },ci*150);
+              });
+            }
+
+            // Mar 3 Hezbollah event: slide in dist cell 2 (638 MI / Lebanon→Akrotiri)
+            if(ev2.d==='Mar 3'){
+              setTimeout(()=>distRowIn(2,0), 600);
+              // Akrotiri label animates in during Mar 3
+              setTimeout(()=>{
+                typingMarker(35.4,33.3,'AKROTIRI','rgba(224,112,48,0.9)','Hezbollah drone','rgba(224,112,48,0.75)');
+              }, 800);
+              // Hezbollah base dot + animated line to Akrotiri Cyprus
+              setTimeout(()=>{
+                L.marker([33.5,35.5],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
+                const p1 = heroMap.latLngToContainerPoint([33.5,35.5]);
+                const p2 = heroMap.latLngToContainerPoint([34.6,32.97]);
+                let hsvg = document.getElementById('hez-line-svg');
+                if(!hsvg){
+                  hsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+                  hsvg.id = 'hez-line-svg';
+                  hsvg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
+                  heroMap.getPanes().overlayPane.appendChild(hsvg);
+                }
+                const hLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+                hLine.setAttribute('x1',p1.x); hLine.setAttribute('y1',p1.y);
+                hLine.setAttribute('x2',p2.x); hLine.setAttribute('y2',p2.y);
+                hLine.setAttribute('stroke','rgba(224,112,48,0.7)');
+                hLine.setAttribute('stroke-width','1');
+                hLine.setAttribute('pathLength','1');
+                hLine.style.strokeDasharray='1';
+                hLine.style.strokeDashoffset='1';
+                hsvg.appendChild(hLine);
+                setTimeout(()=>{
+                  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+                    hLine.style.transition='stroke-dashoffset 800ms linear';
+                    hLine.style.strokeDashoffset='0';
+                  }));
+                },100);
+              }, 300);
+            }
+
+
+          // ic:true intercept events: animate missile path
+          if(ev2.ic){
+            // Draw animated missile path from W.Iran to intercept point
+            const tehPt = heroMap.latLngToContainerPoint([33.5,47.5]);
+            const intPt = heroMap.latLngToContainerPoint([ev2.lat,ev2.lon]);
+            const mapEl = document.getElementById('hero-map-bg');
+            let msvg = document.getElementById('missile-path-svg');
+            if(!msvg){
+              msvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+              msvg.id='missile-path-svg';
+              msvg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
+              heroMap.getPanes().overlayPane.appendChild(msvg);
+            }
+            const mLine=document.createElementNS('http://www.w3.org/2000/svg','line');
+            mLine.setAttribute('x1',tehPt.x); mLine.setAttribute('y1',tehPt.y);
+            mLine.setAttribute('x2',intPt.x); mLine.setAttribute('y2',intPt.y);
+            mLine.setAttribute('stroke','rgba(167,139,250,0.7)');
+            mLine.setAttribute('stroke-width','1');
+            mLine.setAttribute('pathLength','1');
+            mLine.style.strokeDasharray='1';
+            mLine.style.strokeDashoffset='1';
+            msvg.appendChild(mLine);
+            setTimeout(()=>{
+              requestAnimationFrame(()=>requestAnimationFrame(()=>{
+                mLine.style.transition='stroke-dashoffset 600ms linear';
+                mLine.style.strokeDashoffset='0';
+              }));
+            },100);
+            // Fade out missile path after 1.6s
+
+            // First intercept only: slide in dist cell 1 (1,200 MI / Dörtyol)
+            if(!firstInterceptSeen){
+              firstInterceptSeen=true;
+              setTimeout(()=>distRowIn(1,0), 800);
+              setTimeout(()=>typingMarker(38.0,36.5,'MISSILES INTERCEPTED','rgba(167,139,250,0.9)','USS Oscar Austin \u00b7 SM-3','rgba(167,139,250,0.75)'), 1200);
+            }
+          }
+        },i*300);
+      });
+    }
+
+    idx++;
+    // Only accelerate after Mar 13 — hold slow through key early dates
+    const isPastMar13 = d.getMonth()===2 && d.getDate()>13 || d.getMonth()>2;
+    if(isPastMar13){
+      speed=Math.max(195,speed-13);
+      setTimeout(tick, Math.round(delay*0.6));
+    } else {
+      const pauseDates=['Mar 3','Mar 4','Mar 7','Mar 9','Mar 13','Mar 22','Mar 30'];
+      const extraPause=pauseDates.includes(label) ? 1000 : 0;
+      setTimeout(tick, delay + extraPause);
+    }
+  }
+
+  tick();
+}
+
+function initHeroMap(){
+  heroMap=L.map('hero-map-bg',{
+    center:[33,38],zoom:5.15,zoomControl:false,
+    scrollWheelZoom:false,dragging:false,
+    doubleClickZoom:false,keyboard:false,touchZoom:false
+  });
+  darkTiles().addTo(heroMap);
+
+  // RUN THE SEQUENCE
+  runTypewriter(()=>{
+    beatMapIn(()=>{
+      beatAthens(()=>{
+        beatTehran(()=>{
+          beatAthensBox(()=>{
+            beatTehranBox(()=>{
+              beatLineAT(()=>{
+                beatMapFill(()=>{
+                  beatDateCounter();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+// ═══════════════════════════════════════
+// WAR MAP
+
+// ═══════════════════════════════════════
+function initWarMap() {
+  const map = L.map('war-map',{center:[30,42],zoom:4,zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,keyboard:false,touchZoom:false});
+  window['war-map-inst'] = map;
+  darkTiles().addTo(map);
+
+  L.circle([35.7,51.4],{radius:2414000,color:'rgba(192,57,43,0.45)',weight:1.5,dashArray:'6 4',fill:true,fillColor:'#c0392b',fillOpacity:0.04}).addTo(map);
+  [[35.7,51.4,85000,.9],[26,51,78000,.85],[24.5,54.4,58000,.78],[25,56.5,52000,.88],[24.7,46.7,48000,.62],[33.5,44.4,38000,.48],[29.4,47.9,32000,.58]].forEach(([la,lo,r,op])=>{
+    L.circle([la,lo],{radius:r,color:'rgba(0,0,0,0)',fill:true,fillColor:'#c0392b',fillOpacity:op*.45}).addTo(map);
+    L.circle([la,lo],{radius:r*2,color:'rgba(0,0,0,0)',fill:true,fillColor:'#c0392b',fillOpacity:op*.1}).addTo(map);
+  });
+  [[35.7,51.4,52000,.5],[29.5,50.0,48000,.6],[25,56.3,32000,.38],[31.5,34.8,28000,.4]].forEach(([la,lo,r,op])=>{
+    L.circle([la,lo],{radius:r,color:'rgba(0,0,0,0)',fill:true,fillColor:'#5aa0e8',fillOpacity:op*.5}).addTo(map);
+  });
+  L.circle([33.8,35.5],{radius:22000,color:'rgba(0,0,0,0)',fill:true,fillColor:'#e07030',fillOpacity:.45}).addTo(map);
+  L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',12)}).addTo(map);
+  L.marker([37.97,24.5],{icon:lbl('ATHENS','#3dbb74','Level 1')}).addTo(map);
+  L.marker([35.7,51.4],{icon:dotIcon('#c0392b',10)}).addTo(map);
+  L.marker([36.2,52.2],{icon:lbl('TEHRAN','rgba(192,57,43,0.9)','~2,100 mi from Athens')}).addTo(map);
+  L.marker([36.8,36.2],{icon:pulseIcon('#a78bfa',9)}).addTo(map);
+  L.marker([36.8,37.0],{icon:lbl('4× INTERCEPTS','#a78bfa','Turkey — all stopped')}).addTo(map);
+  L.marker([34.6,32.97],{icon:dotIcon('#e07030',8)}).addTo(map);
+  L.marker([34.9,33.3],{icon:lbl('AKROTIRI','#e07030','Hezbollah drone · L3')}).addTo(map);
+  L.polyline([[37.97,23.7],[35.7,51.4]],{color:'rgba(255,255,255,0.09)',weight:1,dashArray:'3 4'}).addTo(map);
+  L.marker([37.2,38],{icon:lbl('~2,100 MI','rgba(255,255,255,0.25)')}).addTo(map);
+}
+
+// ═══════════════════════════════════════
+// US SCALE MAP — northeast of SA
+// ═══════════════════════════════════════
+function initUSMap() {
+  const map = L.map('us-map',{center:[38,-85],zoom:4,zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,keyboard:false,touchZoom:false});
+  window['us-map-inst'] = map;
+  darkTiles().addTo(map);
+
+  // San Antonio = Athens
+  L.marker([29.4241,-98.4936],{icon:pulseIcon('#3dbb74',13)}).addTo(map);
+  L.marker([29.9,-97.8],{icon:lbl('SAN ANTONIO = ATHENS','#3dbb74','If Athens were here')}).addTo(map);
+  L.circle([29.4241,-98.4936],{radius:160000,color:'rgba(0,0,0,0)',fill:true,fillColor:'#3dbb74',fillOpacity:.07}).addTo(map);
+
+  // Charlotte NC = Akrotiri (~590 mi NE)
+  L.marker([35.2271,-80.8431],{icon:dotIcon('#e07030',9)}).addTo(map);
+  L.marker([35.5,-80.0],{icon:lbl('CHARLOTTE = AKROTIRI','#e07030','~590 mi NE · Hezbollah target')}).addTo(map);
+
+  // Washington DC = Dörtyol (~880 mi NE)
+  L.marker([38.9072,-77.0369],{icon:pulseIcon('#a78bfa',11)}).addTo(map);
+  L.marker([39.2,-76.3],{icon:lbl('WASHINGTON DC = DÖRTYOL','#a78bfa','~880 mi NE · Nearest debris')}).addTo(map);
+  L.circle([38.9072,-77.0369],{radius:120000,color:'rgba(167,139,250,0.5)',weight:1.5,fill:true,fillColor:'#a78bfa',fillOpacity:.08}).addTo(map);
+
+  // Halifax = Tehran (~2100 mi NE)
+  L.marker([44.6488,-63.5752],{icon:dotIcon('#c0392b',11)}).addTo(map);
+  L.marker([45.0,-62.2],{icon:lbl('HALIFAX = TEHRAN','#c0392b','~2,100 mi NE · Launch origin')}).addTo(map);
+
+  // Missile path Halifax → DC
+  L.polyline([[44.6488,-63.5752],[38.9072,-77.0369]],{color:'rgba(192,57,43,0.5)',weight:2,dashArray:'8 5'}).addTo(map);
+  // SA → DC scale reference
+  L.polyline([[29.4241,-98.4936],[38.9072,-77.0369]],{color:'rgba(255,255,255,0.07)',weight:1,dashArray:'3 4'}).addTo(map);
+  L.marker([36.5,-85],{icon:lbl('INTERCEPTED','rgba(167,139,250,0.65)','Halifax→DC · All stopped')}).addTo(map);
+}
+
+// ═══════════════════════════════════════
+// EASTERN MED MAP
+// ═══════════════════════════════════════
+function initMedMap() {
+  const map = L.map('med-map',{center:[36,31],zoom:5,zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,keyboard:false,touchZoom:false});
+  window['med-map-inst'] = map;
+  darkTiles().addTo(map);
+
+  // Missile trajectory Iran → Iraq → Syria → Turkey
+  L.polyline([[33.0,47.0],[34.0,43.0],[35.2,38.8],[36.5,36.8]],{color:'rgba(192,57,43,0.6)',weight:2,dashArray:'8 5'}).addTo(map);
+  L.marker([33.0,47.0],{icon:dotIcon('#c0392b',8)}).addTo(map);
+  L.marker([33.3,47.6],{icon:lbl('IRAN LAUNCH AREA','rgba(192,57,43,0.8)','W. Iran → Iraq → Syria → Turkey')}).addTo(map);
+
+  // Intercept burst
+  L.circle([36.8,36.2],{radius:55000,color:'rgba(167,139,250,0.6)',weight:1.5,fill:true,fillColor:'#a78bfa',fillOpacity:.1}).addTo(map);
+  L.marker([36.8,36.2],{icon:pulseIcon('#a78bfa',10)}).addTo(map);
+  L.marker([36.8,36.7],{icon:lbl('DÖRTYOL — 4× INTERCEPT','#a78bfa','SM-3 · USS Oscar Austin')}).addTo(map);
+
+  L.marker([37.0,35.4],{icon:dotIcon('#5aa0e8',7)}).addTo(map);
+  L.marker([37.0,35.6],{icon:lbl('INCIRLIK','#5aa0e8','NATO airbase')}).addTo(map);
+  L.marker([34.6,32.97],{icon:dotIcon('#e07030',8)}).addTo(map);
+  L.marker([34.9,33.3],{icon:lbl('AKROTIRI','#e07030','UK RAF · Hezbollah drone · L3')}).addTo(map);
+  L.marker([36.4,28.2],{icon:dotIcon('rgba(61,187,116,0.65)',7)}).addTo(map);
+  L.marker([36.7,28.3],{icon:lbl('RHODES','rgba(61,187,116,0.65)','~250 mi from Cyprus')}).addTo(map);
+  L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',12)}).addTo(map);
+  L.marker([38.2,24.0],{icon:lbl('ATHENS','#3dbb74','Level 1 · 880 mi from intercept')}).addTo(map);
+  L.marker([36.4,25.4],{icon:dotIcon('rgba(61,187,116,0.55)',6)}).addTo(map);
+  L.polyline([[37.97,23.7],[36.4,25.4],[36.4,27.0]],{color:'rgba(61,187,116,0.35)',weight:1.5,dashArray:'4 4'}).addTo(map);
+  L.polyline([[37.97,23.7],[36.8,36.2]],{color:'rgba(255,255,255,0.08)',weight:1,dashArray:'3 4'}).addTo(map);
+  L.marker([37.5,29.8],{icon:lbl('~880 MI','rgba(255,255,255,0.25)')}).addTo(map);
+  L.circle([34,28],{radius:190000,color:'rgba(58,120,196,0.2)',weight:1,dashArray:'4 4',fill:true,fillColor:'#3a78c4',fillOpacity:.04}).addTo(map);
+  L.marker([33.2,24.5],{icon:lbl('NATO FLEET','rgba(58,120,196,0.55)','SM-3 destroyer coverage')}).addTo(map);
+}
+
+// ═══════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════
+const tlData=[
+  {d:'Jan 8',tag:'Context',t:'econ',title:'Iran internet blackout amid mass protests',loc:'Tehran',core:false},
+  {d:'Jan 13',tag:'Diplomatic',t:'diplo',title:'Trump warns Iran; Gulf military buildup begins',loc:'Washington DC',core:false},
+  {d:'Jan 25',tag:'Military',t:'blue',title:'USS Abraham Lincoln carrier strike group deploys to Gulf',loc:'Persian Gulf',core:false},
+  {d:'Feb 3',tag:'Escalation',t:'iran',title:'6 IRGC gunboats attempt seizure of US tanker',loc:'Strait of Hormuz',core:false},
+  {d:'Feb 25–26',tag:'Diplomatic',t:'diplo',title:'Third indirect nuclear talks in Geneva — sides far apart',loc:'Geneva',core:false},
+  {d:'FEB 28',tag:'WAR BEGINS',t:'war',title:'Operation Epic Fury — US & Israel launch ~900 strikes. Khamenei killed. Iran retaliates: missiles and drones at Gulf states, US bases, and Israel.',loc:'Iran · UAE · Saudi · Israel · Qatar · Kuwait · Bahrain · Iraq',hi:'war',core:true},
+  {d:'Feb 28',tag:'Greece Advisory',t:'greece',title:'US Embassy Athens: Greece Level 1 unchanged. War begins; advisory unmoved.',loc:'Athens, Greece',hi:'greece',core:true},
+  {d:'Mar 1',tag:'Iranian Strike',t:'iran',title:'Tanker Skylight struck — 2 killed',loc:'Strait of Hormuz',core:false},
+  {d:'Mar 3',tag:'Hezbollah',t:'iran',title:'Hezbollah drone strikes RAF Akrotiri, Cyprus. US issues L3 for Cyprus. Greece: Level 1 unchanged.',loc:'Akrotiri, Cyprus',core:true},
+  {d:'MAR 4',tag:'NATO Intercept #1',t:'nato',title:'NATO destroys Iranian ballistic missile heading toward Turkey. Path: Iran→Iraq→Syria→intercepted by USS Oscar Austin SM-3. Turkish official: may have been aimed at Akrotiri.',loc:'Dörtyol, Hatay, Turkey',hi:'nato',core:true},
+  {d:'Mar 5',tag:'Data',t:'iran',title:'Iran has fired 500+ ballistic missiles and 2,000+ drones — all at Gulf/Israel',loc:'Persian Gulf theater',core:false},
+  {d:'Mar 8',tag:'Economic',t:'econ',title:'Brent over $100. Hormuz traffic down ~70%.',loc:'Global markets',core:false},
+  {d:'Mar 9',tag:'NATO Intercept #2',t:'nato',title:'NATO intercepts second Iranian missile toward Turkey',loc:'Southern Turkey',hi:'nato',core:false},
+  {d:'Mar 13',tag:'US Strike',t:'blue',title:'US strikes 90 targets on Kharg Island — Iran\'s main oil hub',loc:'Kharg Island, Gulf',core:false},
+  {d:'Mar 13',tag:'NATO Intercept #3',t:'nato',title:'NATO intercepts third Iranian missile — near Incirlik Air Base',loc:'Eastern Mediterranean',hi:'nato',core:true},
+  {d:'Mar 14',tag:'Advisory',t:'econ',title:'US issues L3 for Cyprus. Greece L1 unchanged. Rhodes is 250 mi from Cyprus.',loc:'Cyprus / Athens',core:true},
+  {d:'Mar 22',tag:'US/Israeli Strike',t:'blue',title:'New wave of unprecedented strikes on Tehran',loc:'Tehran, Iran',core:false},
+  {d:'Mar 24',tag:'Diplomatic',t:'diplo',title:'US ceasefire proposal via Pakistan. Iran rejects as "maximalist."',loc:'Islamabad / Tehran',core:false},
+  {d:'Mar 25',tag:'Greece Advisory',t:'greece',title:'Greece Level 1 reconfirmed — 25 days of war, advisory unchanged.',loc:'Athens, Greece',hi:'greece',core:true},
+  {d:'Mar 28',tag:'Iranian Strike',t:'iran',title:'Iran strikes Prince Sultan AB, Saudi Arabia — 29 US troops injured',loc:'Saudi Arabia',core:false},
+  {d:'Mar 30',tag:'NATO Intercept #4',t:'nato',title:'NATO intercepts fourth missile toward Turkey. 4 for 4 — none reached Turkish soil.',loc:'Eastern Med / Turkish airspace',hi:'nato',core:true},
+  {d:'Apr 5',tag:'Greece Advisory',t:'greece',title:'US Embassy Athens reconfirms Level 1 — "Exercise Normal Precautions." 35 days. Unchanged.',loc:'Athens, Greece',hi:'greece',core:true},
+];
+let tlExpanded=false;
+function buildTimeline(){
+  const c=document.getElementById('tl-events');
+  tlData.forEach(ev=>{
+    const div=document.createElement('div');
+    div.className='tl-row'+(ev.core?'':' hidden-evt');
+    div.innerHTML=`<div class="tl-date">${ev.d}</div><div class="tl-dot-col"><div class="tl-dot d-${ev.t}"></div></div><div class="tl-content${ev.hi?' hl-'+ev.hi:''}"><div class="tl-tag c-${ev.t}">${ev.tag}</div><div class="tl-title">${ev.title}</div><div class="tl-loc">📍 ${ev.loc}</div></div>`;
+    c.appendChild(div);
+  });
+}
+function toggleTimeline(e){
+  e.stopPropagation();
+  tlExpanded=!tlExpanded;
+  document.querySelectorAll('.hidden-evt').forEach(el=>el.style.display=tlExpanded?'grid':'none');
+  document.getElementById('twirl-icon').style.transform=tlExpanded?'rotate(90deg)':'';
+  document.getElementById('twirl-label').textContent=tlExpanded?'Collapse to key events':'Expand all 35 events';
+  // Update parent body height
+  const body=document.getElementById('cb-3');
+  if(body.style.height!=='auto'){body.style.height=body.scrollHeight+'px';}
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+function initAll(){
+  try{initHeroMap();}catch(e){console.warn('hero:',e);}
+  try{initWarMap();}catch(e){console.warn('war:',e);}
+  try{initUSMap();}catch(e){console.warn('us:',e);}
+  try{initMedMap();}catch(e){console.warn('med:',e);}
+  buildTimeline();
+  document.querySelectorAll('.hidden-evt').forEach(el=>el.style.display='none');
+
+  // Trigger stagger on card 1 (already open)
+  setTimeout(()=>{
+    const ci1=document.getElementById('ci-1');
+    if(ci1){
+      ci1.querySelectorAll('.slide-up,.slide-left,.slide-right,.fade-in-el').forEach(el=>{
+        setTimeout(()=>el.classList.add('in'),50);
+      });
+    }
+  },600);
+}
+
+if(typeof L!=='undefined'){
+  if(document.readyState==='complete'||document.readyState==='interactive'){initAll();}
+  else{window.addEventListener('DOMContentLoaded',initAll);}
+} else {
+  window.addEventListener('load',initAll);
+}
+</script>
+</body>
+</html>
