@@ -1813,17 +1813,40 @@ function animateWarMap() {
     L.marker([37.2,38],{icon:lbl('~2,100 MI','rgba(255,255,255,0.25)')}).addTo(map);
   }, 5800);
 
-  // Geodesic circle — farthest intercept radius (~850 mi from Tehran to Turkey intercept)
+  // Geodesic circle — draws stroke then fills
   setTimeout(() => {
     const pts = geodesicCircle(35.7, 51.4, 850, 72);
-    L.polygon(pts, {
-      color: 'rgba(192,57,43,0.45)',
-      weight: 1.5,
-      dashArray: '6 4',
-      fill: true,
-      fillColor: '#c0392b',
-      fillOpacity: 0.04
-    }).addTo(map);
+    // Draw the outline progressively over 1600ms
+    const stroke = L.polyline([], {color:'rgba(192,57,43,0.45)',weight:1.5,dashArray:'6 4'}).addTo(map);
+    const drawMs = 1600;
+    const t0 = performance.now();
+    let idx = 0;
+    function step(now) {
+      const t = Math.min((now - t0) / drawMs, 1);
+      const target = Math.floor(t * (pts.length - 1));
+      while(idx <= target && idx < pts.length) {
+        stroke.addLatLng(pts[idx]);
+        idx++;
+      }
+      if(t < 1) { requestAnimationFrame(step); }
+      else {
+        // Close the ring
+        stroke.addLatLng(pts[0]);
+        // Fade in the fill over 800ms
+        const fill = L.polygon(pts, {
+          color:'rgba(0,0,0,0)',weight:0,
+          fill:true,fillColor:'#c0392b',fillOpacity:0
+        }).addTo(map);
+        const f0 = performance.now();
+        function fadeStep(now) {
+          const ft = Math.min((now - f0) / 800, 1);
+          fill.setStyle({fillOpacity: 0.06 * ft});
+          if(ft < 1) requestAnimationFrame(fadeStep);
+        }
+        requestAnimationFrame(fadeStep);
+      }
+    }
+    requestAnimationFrame(step);
   }, 6500);
 }
 
