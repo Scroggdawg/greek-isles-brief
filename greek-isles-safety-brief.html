@@ -794,6 +794,7 @@ function toggleCard(n) {
         });
         // Animate distance bars
         if(n===2) { animateDistBars(); animateUSMap(); }
+        if(n===3) animateTimeline();
         // Invalidate maps
         setTimeout(() => invalidateMaps(), 520);
       }, 120);
@@ -1971,10 +1972,22 @@ function buildTimeline(){
   tlData.forEach(ev=>{
     const div=document.createElement('div');
     div.className='tl-row'+(ev.core?'':' hidden-evt');
+    if(ev.core) { div.style.opacity='0'; div.style.transition='opacity 0.4s ease'; }
     div.innerHTML=`<div class="tl-date">${ev.d}</div><div class="tl-dot-col"><div class="tl-dot d-${ev.t}"></div></div><div class="tl-content${ev.hi?' hl-'+ev.hi:''}"><div class="tl-tag c-${ev.t}">${ev.tag}</div><div class="tl-title">${ev.title}</div><div class="tl-loc">📍 ${ev.loc}</div></div>`;
     c.appendChild(div);
   });
 }
+function animateTimeline() {
+  if(window['tl-animated']) return;
+  window['tl-animated'] = true;
+  const rows = Array.from(document.querySelectorAll('#tl-events .tl-row:not(.hidden-evt)'));
+  rows.forEach((row, i) => {
+    setTimeout(() => {
+      row.style.opacity = '1';
+    }, i * 180);
+  });
+}
+
 function toggleTimeline(e){
   e.stopPropagation();
   tlExpanded=!tlExpanded;
