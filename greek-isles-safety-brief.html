@@ -1806,7 +1806,7 @@ function initUSMap() {
   window['us-map-inst'] = map;
   darkTiles().addTo(map);
   // SA → DC scale reference line (static, subtle)
-  L.polyline([[29.4241,-98.4936],[38.9072,-77.0369]],{color:'rgba(255,255,255,0.07)',weight:1,dashArray:'3 4'}).addTo(map);
+  L.polyline([[29.4241,-98.4936],[38.9072,-77.0369]],{color:'rgba(255,255,255,0.27)',weight:1,dashArray:'3 4'}).addTo(map);
   window['us-map-animated'] = false;
 }
 
@@ -1854,24 +1854,21 @@ function animateUSMap() {
 
   // Helper: animated dashed polyline
   function addAnimatedLine(coords, color, weight, dashArray, drawMs, delay) {
+    // Uses point interpolation instead of stroke-dashoffset to avoid flash.
+    // dashArray param retained for API compatibility but ignored (solid line only).
     setTimeout(() => {
-      const lineOpts = {color, weight};
-      if(dashArray) lineOpts.dashArray = dashArray;
-      const line = L.polyline(coords, lineOpts).addTo(map);
-      setTimeout(() => {
-        const path = line.getElement();
-        if (!path) return;
-        path.style.visibility = 'hidden';
-        const len = path.getTotalLength();
-        path.style.strokeDasharray = len + ' ' + len;
-        path.style.strokeDashoffset = len;
-        path.style.transition = 'none';
-        requestAnimationFrame(() => {
-          path.style.visibility = 'visible';
-          path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
-          path.style.strokeDashoffset = '0';
-        });
-      }, 60);
+      const start = coords[0];
+      const end   = coords[1];
+      const line  = L.polyline([start], {color, weight}).addTo(map);
+      const startTime = performance.now();
+      function step(now) {
+        const t = Math.min((now - startTime) / drawMs, 1);
+        const lat = start[0] + (end[0] - start[0]) * t;
+        const lng = start[1] + (end[1] - start[1]) * t;
+        line.setLatLngs([start, [lat, lng]]);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
     }, delay);
   }
 
