@@ -455,7 +455,6 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
               <div class="aline">The <strong>nearest missile debris</strong> fell in the equivalent of <strong>Washington, DC</strong> — ~880 miles northeast of San Antonio.</div>
               <div class="aline">The <strong>missiles were launched</strong> from the equivalent of <strong>Halifax, Nova Scotia</strong> — ~2,100 miles northeast of San Antonio.</div>
               <div class="aline">The <strong>Hezbollah drone strike</strong> on UK base Akrotiri (Cyprus) is the equivalent of <strong>Charlotte, NC</strong>. US issued advisory for Charlotte. San Antonio: unchanged.</div>
-              <div class="aquote">"Missiles fired from Halifax were intercepted over Washington, DC. San Antonio is reviewing its travel plans."</div>
             </div>
           </div>
           <div class="slide-left d3 io-watch" style="margin-top:24px">
@@ -794,7 +793,7 @@ function toggleCard(n) {
           setTimeout(() => el.classList.add('in'), 50);
         });
         // Animate distance bars
-        if(n===2) animateDistBars();
+        if(n===2) { animateDistBars(); animateUSMap(); }
         // Invalidate maps
         setTimeout(() => invalidateMaps(), 520);
       }, 120);
@@ -1699,32 +1698,104 @@ function initUSMap() {
   const map = L.map('us-map',{center:[38,-85],zoom:4,zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,keyboard:false,touchZoom:false});
   window['us-map-inst'] = map;
   darkTiles().addTo(map);
-
-  // San Antonio = Athens
-  L.marker([29.4241,-98.4936],{icon:pulseIcon('#3dbb74',13)}).addTo(map);
-  L.marker([29.9,-97.8],{icon:lbl('SAN ANTONIO = ATHENS','#3dbb74','If Athens were here')}).addTo(map);
-  L.circle([29.4241,-98.4936],{radius:160000,color:'rgba(0,0,0,0)',fill:true,fillColor:'#3dbb74',fillOpacity:.07}).addTo(map);
-
-  // Charlotte NC = Akrotiri (~590 mi NE)
-  L.marker([35.2271,-80.8431],{icon:dotIcon('#e07030',9)}).addTo(map);
-  L.marker([35.5,-80.0],{icon:lbl('CHARLOTTE = AKROTIRI','#e07030','~590 mi NE · Hezbollah drone strike')}).addTo(map);
-
-  // Washington DC = Dörtyol (~880 mi NE)
-  L.marker([38.9072,-77.0369],{icon:pulseIcon('#a78bfa',11)}).addTo(map);
-  L.marker([39.2,-76.3],{icon:lbl('WASHINGTON DC = DÖRTYOL','#a78bfa','~880 mi NE · Nearest debris')}).addTo(map);
-  L.circle([38.9072,-77.0369],{radius:120000,color:'rgba(167,139,250,0.5)',weight:1.5,fill:true,fillColor:'#a78bfa',fillOpacity:.08}).addTo(map);
-
-  // Halifax = Tehran (~2100 mi NE)
-  L.marker([44.6488,-63.5752],{icon:dotIcon('#c0392b',11)}).addTo(map);
-  L.marker([45.0,-62.2],{icon:lbl('HALIFAX = TEHRAN','#c0392b','~2,100 mi NE · Launch origin')}).addTo(map);
-
-  // Missile path Halifax → DC
-  L.polyline([[44.6488,-63.5752],[38.9072,-77.0369]],{color:'rgba(192,57,43,0.5)',weight:2,dashArray:'8 5'}).addTo(map);
-  // Intercept burst at DC
-  L.circle([38.9072,-77.0369],{radius:80000,color:'rgba(167,139,250,0.7)',weight:1.5,dashArray:'4 3',fill:true,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);
-  // SA → DC scale reference
+  // SA → DC scale reference line (static, subtle)
   L.polyline([[29.4241,-98.4936],[38.9072,-77.0369]],{color:'rgba(255,255,255,0.07)',weight:1,dashArray:'3 4'}).addTo(map);
-  L.marker([39.5,-76.0],{icon:lbl('INTERCEPTED.','rgba(167,139,250,0.85)','Halifax→DC · SM-3 · All stopped')}).addTo(map);
+  window['us-map-animated'] = false;
+}
+
+function animateUSMap() {
+  if(window['us-map-animated']) return;
+  window['us-map-animated'] = true;
+  const map = window['us-map-inst'];
+  if(!map) return;
+
+  // Helper: animated pulse dot
+  function addPulseDot(lat, lon, color, sz, delay) {
+    setTimeout(() => {
+      L.marker([lat, lon], {icon: pulseIcon(color, sz)}).addTo(map);
+    }, delay);
+  }
+
+  // Helper: typing label marker
+  function addTypingLabel(lat, lon, lines, color, subText, subColor, delay) {
+    setTimeout(() => {
+      const mainId = 'uslbl-' + lat.toString().replace('.','_') + '-' + lon.toString().replace('.','_');
+      const html = `<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 10px #060810;line-height:1.6">
+        <span id="${mainId}"></span>
+        ${subText ? `<br><span style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'}">${subText}</span>` : ''}
+      </div>`;
+      const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],html});
+      const marker = L.marker([lat, lon], {icon}).addTo(map);
+      setTimeout(() => {
+        const el = marker.getElement();
+        if (!el) return;
+        const span = el.querySelector('#' + mainId);
+        if (!span) return;
+        const fullText = lines;
+        let i = 0;
+        const iv = setInterval(() => {
+          if (i < fullText.length) {
+            span.innerHTML += fullText[i] === '|' ? '<br>' : fullText[i];
+            i++;
+          } else {
+            clearInterval(iv);
+          }
+        }, 48);
+      }, 80);
+    }, delay);
+  }
+
+  // Helper: animated dashed polyline
+  function addAnimatedLine(coords, color, weight, dashArray, drawMs, delay) {
+    setTimeout(() => {
+      const line = L.polyline(coords, {color, weight, dashArray}).addTo(map);
+      setTimeout(() => {
+        const path = line.getElement();
+        if (!path) return;
+        path.style.visibility = 'hidden';
+        const len = path.getTotalLength();
+        path.style.strokeDasharray = len + ' ' + len;
+        path.style.strokeDashoffset = len;
+        path.style.transition = 'none';
+        requestAnimationFrame(() => {
+          path.style.visibility = 'visible';
+          path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
+          path.style.strokeDashoffset = '0';
+        });
+      }, 60);
+    }, delay);
+  }
+
+  // SEQUENCE — total ~5.5s
+  // T=0     San Antonio pulse in
+  addPulseDot(29.4241, -98.4936, '#3dbb74', 13, 0);
+  addTypingLabel(29.9, -97.8, 'SAN ANTONIO = ATHENS', '#3dbb74', 'If Athens were here', null, 200);
+
+  // T=600   Charlotte pulse in
+  addPulseDot(35.2271, -80.8431, '#e07030', 9, 600);
+  addTypingLabel(35.5, -80.0, 'CHARLOTTE = AKROTIRI', '#e07030', '~590 mi NE · Hezbollah drone strike', null, 800);
+
+  // T=1400  Washington DC pulse in + intercept burst circle
+  addPulseDot(38.9072, -77.0369, '#a78bfa', 11, 1400);
+  setTimeout(() => {
+    L.circle([38.9072,-77.0369],{radius:80000,color:'rgba(167,139,250,0.7)',weight:1.5,dashArray:'4 3',fill:true,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);
+  }, 1400);
+  addTypingLabel(39.2, -76.3, 'INTERCEPTED AT|WASHINGTON DC = D\u00d6RTYOL', '#a78bfa', '~880 mi NE · nearest debris', null, 1600);
+
+  // T=2400  Halifax pulse in
+  addPulseDot(44.6488, -63.5752, '#c0392b', 11, 2400);
+  addTypingLabel(45.0, -62.2, 'HALIFAX = TEHRAN', '#c0392b', '~2,100 mi NE · Launch origin', null, 2600);
+
+  // T=3600  Halifax → DC dashed missile path draws in (1800ms draw)
+  addAnimatedLine(
+    [[44.6488,-63.5752],[38.9072,-77.0369]],
+    'rgba(192,57,43,0.5)', 2, '8 5', 1800, 3600
+  );
+
+  // T=4200  SA soft pulse circle fades in
+  setTimeout(() => {
+    L.circle([29.4241,-98.4936],{radius:160000,color:'rgba(0,0,0,0)',fill:true,fillColor:'#3dbb74',fillOpacity:.07}).addTo(map);
+  }, 4200);
 }
 
 // ═══════════════════════════════════════
