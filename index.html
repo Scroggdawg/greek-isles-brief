@@ -1138,7 +1138,14 @@ function animateDottedLine(coords, opts, drawMs) {
 
   // pathLength=1 normalizes all length math to 0-1 range
   lineEl.setAttribute('pathLength', '1');
-  lineEl.style.strokeDasharray = dotPattern;
+  // Convert pixel dashArray to pathLength=1 normalized fractions
+  // '5 7' in pixels → '0.0417 0.0583' in normalized space (≈10 dots across line)
+  const rawParts = dotPattern.trim().split(/\s+/).map(Number);
+  const pixelCycle = rawParts.reduce((a, b) => a + b, 0) || 12;
+  const normCycle = 0.10;
+  const normDot = normCycle * (rawParts[0] / pixelCycle);
+  const normGap = normCycle * ((rawParts[1] || rawParts[0]) / pixelCycle);
+  lineEl.style.strokeDasharray = normDot.toFixed(4) + ' ' + normGap.toFixed(4);
   lineEl.style.strokeDashoffset = '1';
   svg.appendChild(lineEl);
 
