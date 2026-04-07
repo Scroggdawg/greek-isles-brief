@@ -1416,7 +1416,7 @@ function beatLineAT(cb){
   lineEl.setAttribute('stroke','rgba(192,57,43,0.8)');
   lineEl.setAttribute('stroke-width','1.5');
   lineEl.setAttribute('pathLength','1');
-  lineEl.style.strokeDasharray = '1';
+  lineEl.style.strokeDasharray = '0.03 0.04';
   lineEl.style.strokeDashoffset = '1';
 
   // CIRCLE RING — same pathLength trick
@@ -1819,12 +1819,12 @@ function beatDateCounter(){
                 hLine.setAttribute('stroke','rgba(224,112,48,0.7)');
                 hLine.setAttribute('stroke-width','1');
                 hLine.setAttribute('pathLength','1');
-                hLine.style.strokeDasharray='1';
+                hLine.style.strokeDasharray='0.04 0.06';
                 hLine.style.strokeDashoffset='1';
                 hsvg.appendChild(hLine);
                 setTimeout(()=>{
                   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-                    hLine.style.transition='stroke-dashoffset 800ms linear';
+                    hLine.style.transition='stroke-dashoffset 1400ms linear';
                     hLine.style.strokeDashoffset='0';
                   }));
                 },100);
@@ -1851,12 +1851,12 @@ function beatDateCounter(){
             mLine.setAttribute('stroke','rgba(167,139,250,0.7)');
             mLine.setAttribute('stroke-width','1');
             mLine.setAttribute('pathLength','1');
-            mLine.style.strokeDasharray='1';
+            mLine.style.strokeDasharray='0.05 0.07';
             mLine.style.strokeDashoffset='1';
             msvg.appendChild(mLine);
             setTimeout(()=>{
               requestAnimationFrame(()=>requestAnimationFrame(()=>{
-                mLine.style.transition='stroke-dashoffset 600ms linear';
+                mLine.style.transition='stroke-dashoffset 1200ms linear';
                 mLine.style.strokeDashoffset='0';
               }));
             },100);
