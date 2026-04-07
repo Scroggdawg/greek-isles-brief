@@ -1417,7 +1417,7 @@ function beatLineAT(cb){
   lineEl.setAttribute('stroke-width','1.5');
   lineEl.setAttribute('pathLength','1');
   lineEl.style.strokeDasharray = '0.03 0.04';
-  lineEl.style.strokeDashoffset = '1';
+  lineEl.style.strokeDashoffset = '1.03';
 
   // CIRCLE RING — same pathLength trick
   const circRing = document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -1820,7 +1820,7 @@ function beatDateCounter(){
                 hLine.setAttribute('stroke-width','1');
                 hLine.setAttribute('pathLength','1');
                 hLine.style.strokeDasharray='0.04 0.06';
-                hLine.style.strokeDashoffset='1';
+                hLine.style.strokeDashoffset='1.04';
                 hsvg.appendChild(hLine);
                 setTimeout(()=>{
                   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -1852,7 +1852,7 @@ function beatDateCounter(){
             mLine.setAttribute('stroke-width','1');
             mLine.setAttribute('pathLength','1');
             mLine.style.strokeDasharray='0.05 0.07';
-            mLine.style.strokeDashoffset='1';
+            mLine.style.strokeDashoffset='1.05';
             msvg.appendChild(mLine);
             setTimeout(()=>{
               requestAnimationFrame(()=>requestAnimationFrame(()=>{
