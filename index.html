@@ -1103,61 +1103,103 @@ function animateLine(coords, opts, drawMs) {
 }
 
 function animateDottedLine(coords, opts, drawMs) {
-  // Dotted line that draws itself: dots travel from origin to destination.
-  // Uses strokeDashoffset animation with a repeating dot pattern.
-  const dotOpts = Object.assign({}, opts);
-  delete dotOpts.dashArray;
+  // Draws a dotted line using a raw SVG <line> element appended directly to the
+  // overlay pane — bypassing Leaflet's layer management so _updateStyle() never
+  // wipes stroke-dashoffset during flyTo() redraws. Works in Chrome + Safari.
 
-  const line = L.polyline(coords, dotOpts).addTo(heroMap);
-  heroLayers.push(line);
+  const dotPattern = opts.dashArray || '5 8';
+  const color = opts.color || 'white';
+  const weight = opts.weight || 2;
 
+  // Convert lat/lng coords to container pixel points
+  const p1 = heroMap.latLngToContainerPoint(L.latLng(coords[0][0], coords[0][1]));
+  const p2 = heroMap.latLngToContainerPoint(L.latLng(coords[1][0], coords[1][1]));
+
+  // Get or create the overlay SVG
+  const overlayPane = heroMap.getPanes().overlayPane;
+  let svg = overlayPane.querySelector('svg#hero-overlay-svg');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'hero-overlay-svg';
+    svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
+    overlayPane.appendChild(svg);
+  }
+
+  // Create a raw SVG line element — NOT a Leaflet managed layer
+  const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  lineEl.setAttribute('x1', p1.x);
+  lineEl.setAttribute('y1', p1.y);
+  lineEl.setAttribute('x2', p2.x);
+  lineEl.setAttribute('y2', p2.y);
+  lineEl.setAttribute('stroke', color);
+  lineEl.setAttribute('stroke-width', String(weight));
+  lineEl.setAttribute('stroke-linecap', 'round');
+  lineEl.setAttribute('opacity', String(opts.opacity || 0.9));
+
+  // pathLength=1 normalizes all length math to 0-1 range
+  lineEl.setAttribute('pathLength', '1');
+  lineEl.style.strokeDasharray = dotPattern;
+  lineEl.style.strokeDashoffset = '1';
+  svg.appendChild(lineEl);
+
+  // Reposition when map moves (keeps line geo-anchored during pan/zoom)
+  function reposition() {
+    const np1 = heroMap.latLngToContainerPoint(L.latLng(coords[0][0], coords[0][1]));
+    const np2 = heroMap.latLngToContainerPoint(L.latLng(coords[1][0], coords[1][1]));
+    lineEl.setAttribute('x1', np1.x); lineEl.setAttribute('y1', np1.y);
+    lineEl.setAttribute('x2', np2.x); lineEl.setAttribute('y2', np2.y);
+  }
+  heroMap.on('move zoom', reposition);
+  heroMap.on('moveend zoomend', reposition);
+
+  // Animate: dashoffset from 1 → 0 over drawMs
   setTimeout(() => {
-    const path = line.getElement();
-    if (!path) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      lineEl.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
+      lineEl.style.strokeDashoffset = '0';
+    }));
+  }, 60);
 
-    path.style.visibility = 'hidden';
-    path.style.transition = 'none';
-
-    const len = path.getTotalLength();
-    if (!len || len === 0) {
-      setTimeout(() => {
-        const len2 = path.getTotalLength();
-        if (!len2) return;
-        startDotAnim(path, len2, drawMs, opts.dashArray || '5 8');
-      }, 200);
-      return;
+  // Return a cleanup handle compatible with heroLayers/fadeLayer
+  const handle = {
+    _rawEl: lineEl,
+    _map: heroMap,
+    _reposition: reposition,
+    getElement: () => lineEl,
+    remove: function() {
+      heroMap.off('move zoom', reposition);
+      heroMap.off('moveend zoomend', reposition);
+      if (lineEl.parentNode) lineEl.parentNode.removeChild(lineEl);
     }
-
-    startDotAnim(path, len, drawMs, opts.dashArray || '5 8');
-  }, 80);
-
-  return line;
+  };
+  heroLayers.push(handle);
+  return handle;
 }
 
+// startDotAnim is no longer used by animateDottedLine but kept for safety
 function startDotAnim(path, len, drawMs, dotPattern) {
-  // Parse cycle length from dotPattern (e.g. '5 7' → 12, '4 6' → 10)
   const parts = dotPattern.trim().split(/\s+/).map(Number);
   const cycle = parts.reduce((a, b) => a + b, 0) || 13;
-  // Round offset up to nearest full cycle so animation starts at a dot boundary
   const offset = Math.ceil(len / cycle) * cycle;
-
   path.style.transition = 'none';
   path.style.strokeDasharray = dotPattern;
   path.style.strokeDashoffset = String(offset);
   path.style.visibility = 'visible';
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
-      path.style.strokeDashoffset = '0';
-    });
-  });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
+    path.style.strokeDashoffset = '0';
+  }));
 }
 
 function fadeLayer(layer, ms) {
   const el = layer.getElement ? layer.getElement() : null;
   if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
-  setTimeout(() => { try { heroMap.removeLayer(layer); } catch(e){} }, ms + 100);
+  setTimeout(() => {
+    try {
+      if (layer.remove) { layer.remove(); }           // raw SVG handle
+      else { heroMap.removeLayer(layer); }             // normal Leaflet layer
+    } catch(e) {}
+  }, ms + 100);
 }
 
 function fadeMarker(marker, ms) {
@@ -2005,10 +2047,16 @@ function animateWarMap() {
       if (!strokeEl) return;
 
       function animateRing(el, len) {
-        el.style.strokeDasharray = '5 8';
-        el.style.strokeDashoffset = String(len);
+        // Use pathLength trick: set pathLength=1 so dashoffset works in 0-1 space
+        el.setAttribute('pathLength', '1');
+        el.style.strokeDasharray = '0.006 0.009';
+        el.style.strokeDashoffset = '1';
         el.style.opacity = '1';
         el.style.transition = 'none';
+
+        // Force layout flush before starting transition
+        el.getBoundingClientRect();
+
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             el.style.transition = 'stroke-dashoffset 1800ms linear';
