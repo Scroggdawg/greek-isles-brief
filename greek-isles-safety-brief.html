@@ -1135,9 +1135,15 @@ function animateDottedLine(coords, opts, drawMs) {
 }
 
 function startDotAnim(path, len, drawMs, dotPattern) {
-  path.style.strokeDasharray = dotPattern;
-  path.style.strokeDashoffset = String(len);
+  // Parse cycle length from dotPattern (e.g. '5 7' → 12, '4 6' → 10)
+  const parts = dotPattern.trim().split(/\s+/).map(Number);
+  const cycle = parts.reduce((a, b) => a + b, 0) || 13;
+  // Round offset up to nearest full cycle so animation starts at a dot boundary
+  const offset = Math.ceil(len / cycle) * cycle;
+
   path.style.transition = 'none';
+  path.style.strokeDasharray = dotPattern;
+  path.style.strokeDashoffset = String(offset);
   path.style.visibility = 'visible';
 
   requestAnimationFrame(() => {
@@ -1505,7 +1511,7 @@ function beatLineTD(cb){
     beatRef.lineTD = animateDottedLine(
       [[35.7,51.4],[36.8,36.2]],
       {color:'rgba(167,139,250,0.65)',weight:1.5,dashArray:'4 6'},
-      400
+      1200
     );
     // Dörtyol fill circle
     setTimeout(()=>{
@@ -1540,7 +1546,7 @@ function beatAkrotiri(cb){
     beatRef.lineAkr = animateDottedLine(
       [[34.6,32.97],[37.97,23.7]],
       {color:'rgba(224,112,48,0.55)',weight:1.2,dashArray:'5 7'},
-      380
+      1400
     );
     // Distance label
     setTimeout(()=>{
@@ -2029,7 +2035,7 @@ function animateWarMap() {
           if (len2 > 0) animateRing(strokeEl, len2);
         }, 300);
       }
-    }, 400);
+    }, 800);
   }, 8200);
 
   // Subtle reference line Athens → Tehran
