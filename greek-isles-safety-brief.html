@@ -584,9 +584,9 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 
         <!-- LEFT: 86% callout -->
         <div style="background:rgba(196,152,58,0.05);border:1px solid rgba(196,152,58,0.2);border-radius:2px;padding:28px 28px">
-          <div style="margin-bottom:18px">
-            <div id="pct-counter" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(52px,6vw,80px);font-weight:300;color:var(--gold);line-height:1;letter-spacing:-.02em;margin-bottom:8px">0%</div>
-            <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;white-space:nowrap">Reduction in daily launches since February 28</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:nowrap">
+            <div id="pct-counter" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(52px,6vw,80px);font-weight:300;color:var(--gold);line-height:1;letter-spacing:-.02em;flex-shrink:0">0%</div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;line-height:1.5">Reduction in daily<br>launches since<br>February 28</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;gap:10px;font-size:14px;color:var(--dim2);line-height:1.75;padding-bottom:12px;border-bottom:1px solid var(--border)">
@@ -635,11 +635,11 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
       <!-- ROW 3: Two images — TEL truck + SM-3 launch -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="slide-up d3 io-watch">
         <div class="img-card">
-          <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80" alt="Military missile launcher truck" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.background='#1a1a2e';this.style.minHeight='260px';this.style.display='block'">
+          <img src="https://media.defense.gov/2010/Dec/09/2000614201/780/780/0/101116-N-0000X-001.JPG" alt="Iranian Shahab-3 ballistic missile on TEL truck during military parade" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.background='#1a1a2e';this.style.minHeight='260px';this.style.display='block'">
           <div class="img-cap"><strong>TEL Truck — Transporter Erector Launcher</strong><br>Iran fires ballistic missiles from trucks that drive out of underground "Missile City" networks, erect the missile, fire, and attempt to flee before being destroyed by US/Israeli strikes targeting the launchers.</div>
         </div>
         <div class="img-card">
-          <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80" alt="Navy destroyer at sea" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.background='#1a1a2e';this.style.minHeight='260px';this.style.display='block'">
+          <img src="https://media.defense.gov/2002/Nov/21/2000614528/780/780/0/021121-N-0000X-004.JPG" alt="SM-3 Standard Missile launch from USS Lake Erie Aegis cruiser" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.background='#1a1a2e';this.style.minHeight='260px';this.style.display='block'">
           <div class="img-cap"><strong>SM-3 Launch — USS Oscar Austin (Arleigh Burke-class)</strong><br>The Standard Missile-3 interceptor launches from a vertical strike cell aboard the destroyer. Four fired, four kills. The Oscar Austin was operating in the Eastern Mediterranean between Cyprus and the Lebanese coast.</div>
         </div>
       </div>
@@ -2139,7 +2139,7 @@ function animateMedMap() {
   setTimeout(() => {
     growLine([35.0,32.0],[36.8,36.2],'rgba(167,139,250,0.6)',1.5,1800,null);
     typeLabel(36.2,34.2,'SM-3 INTERCEPT ARC','rgba(167,139,250,0.5)',null,null,1600);
-  }, 7600);
+  }, 5600);
 
   // T=5000  Distance reference line Athens → Dörtyol (subtle)
   setTimeout(() => {
