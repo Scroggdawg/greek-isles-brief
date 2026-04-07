@@ -1103,73 +1103,49 @@ function animateLine(coords, opts, drawMs) {
 }
 
 function animateDottedLine(coords, opts, drawMs) {
-  // Draw a dotted/dashed Leaflet polyline that animates from origin to destination.
-  // Uses an SVG clipPath rect that expands left-to-right to reveal pre-drawn dots.
-  const line = L.polyline(coords, opts).addTo(heroMap);
+  // Dotted line that draws itself: dots travel from origin to destination.
+  // Uses strokeDashoffset animation with a repeating dot pattern.
+  const dotOpts = Object.assign({}, opts);
+  delete dotOpts.dashArray;
+
+  const line = L.polyline(coords, dotOpts).addTo(heroMap);
   heroLayers.push(line);
 
   setTimeout(() => {
     const path = line.getElement();
     if (!path) return;
 
-    // Hide initially
     path.style.visibility = 'hidden';
+    path.style.transition = 'none';
 
-    // Get the SVG that Leaflet rendered this path into
-    const svg = path.closest('svg');
-    if (!svg) return;
-
-    // Create a unique clip ID
-    const clipId = 'clip-dot-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
-
-    // Get the bounding box of the path to size the clip rect
-    const bbox = path.getBBox();
-    const pad = 20;
-
-    // Build the clipPath element with an animating rect
-    const defs = svg.querySelector('defs') || svg.insertBefore(
-      document.createElementNS('http://www.w3.org/2000/svg', 'defs'),
-      svg.firstChild
-    );
-
-    const clipEl = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
-    clipEl.setAttribute('id', clipId);
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', bbox.x - pad);
-    rect.setAttribute('y', bbox.y - pad);
-    rect.setAttribute('width', '0');
-    rect.setAttribute('height', bbox.height + pad * 2);
-
-    clipEl.appendChild(rect);
-    defs.appendChild(clipEl);
-
-    // Apply the clip to the path
-    path.setAttribute('clip-path', 'url(#' + clipId + ')');
-    path.style.visibility = 'visible';
-
-    // Animate the rect width from 0 to full in drawMs
-    const fullWidth = bbox.width + pad * 2;
-    let start = null;
-
-    function expandClip(ts) {
-      if (!start) start = ts;
-      const elapsed = ts - start;
-      const progress = Math.min(elapsed / drawMs, 1);
-      rect.setAttribute('width', (fullWidth * progress).toFixed(2));
-      if (progress < 1) {
-        requestAnimationFrame(expandClip);
-      } else {
-        // Animation done — remove clip so line stays visible if map redraws
-        path.removeAttribute('clip-path');
-        clipEl.remove();
-      }
+    const len = path.getTotalLength();
+    if (!len || len === 0) {
+      setTimeout(() => {
+        const len2 = path.getTotalLength();
+        if (!len2) return;
+        startDotAnim(path, len2, drawMs, opts.dashArray || '5 8');
+      }, 200);
+      return;
     }
 
-    requestAnimationFrame(expandClip);
-  }, 60);
+    startDotAnim(path, len, drawMs, opts.dashArray || '5 8');
+  }, 80);
 
   return line;
+}
+
+function startDotAnim(path, len, drawMs, dotPattern) {
+  path.style.strokeDasharray = dotPattern;
+  path.style.strokeDashoffset = String(len);
+  path.style.transition = 'none';
+  path.style.visibility = 'visible';
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
+      path.style.strokeDashoffset = '0';
+    });
+  });
 }
 
 function fadeLayer(layer, ms) {
@@ -2021,23 +1997,39 @@ function animateWarMap() {
     setTimeout(() => {
       const strokeEl = ring.getElement();
       if (!strokeEl) return;
-      const circumference = strokeEl.getTotalLength();
-      strokeEl.style.strokeDasharray = '5 8';
-      strokeEl.style.strokeDashoffset = String(circumference);
-      strokeEl.style.opacity = '1';
-      strokeEl.style.transition = 'none';
-      requestAnimationFrame(() => {
-        strokeEl.style.transition = 'stroke-dashoffset 1800ms linear';
-        strokeEl.style.strokeDashoffset = '0';
-      });
-      // After ring finishes, fade in fill
-      setTimeout(() => {
-        const fillEl = fillPoly.getElement();
-        if (!fillEl) return;
-        fillEl.style.transition = 'fill-opacity 800ms ease';
-        fillEl.setAttribute('fill-opacity', '0.07');
-      }, 1900);
-    }, 150);
+
+      function animateRing(el, len) {
+        el.style.strokeDasharray = '5 8';
+        el.style.strokeDashoffset = String(len);
+        el.style.opacity = '1';
+        el.style.transition = 'none';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.transition = 'stroke-dashoffset 1800ms linear';
+            el.style.strokeDashoffset = '0';
+          });
+        });
+        // After ring finishes, fade in fill
+        setTimeout(() => {
+          const fillEl = fillPoly.getElement();
+          if (!fillEl) return;
+          fillEl.style.transition = 'fill-opacity 800ms ease';
+          fillEl.setAttribute('fill-opacity', '0.07');
+          fillEl.style.fillOpacity = '0.07';
+        }, 1900);
+      }
+
+      // polyline path — getTotalLength works, but retry if 0
+      const len = strokeEl.getTotalLength ? strokeEl.getTotalLength() : 0;
+      if (len > 0) {
+        animateRing(strokeEl, len);
+      } else {
+        setTimeout(() => {
+          const len2 = strokeEl.getTotalLength ? strokeEl.getTotalLength() : 0;
+          if (len2 > 0) animateRing(strokeEl, len2);
+        }, 300);
+      }
+    }, 400);
   }, 8200);
 
   // Subtle reference line Athens → Tehran
