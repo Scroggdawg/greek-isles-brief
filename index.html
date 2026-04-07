@@ -2088,10 +2088,16 @@ function animateAirportMap() {
   airports.forEach(([lat, lon, name, isIntl], i) => {
     setTimeout(() => {
       if(isIntl) {
-        // Pulse dot with ring
-        L.marker([lat, lon], {icon: pulseIcon('#3dbb74', 13)}).addTo(map);
+        // Static dot with permanent circle ring — no blinking
+        L.marker([lat, lon], {icon: dotIcon('#3dbb74', 10)}).addTo(map);
+        L.circle([lat, lon], {
+          radius: 35000,
+          color: 'rgba(61,187,116,0.5)',
+          weight: 1.5,
+          fill: false
+        }).addTo(map);
       } else {
-        // Simple small dot
+        // Smaller plain dot for domestic
         L.marker([lat, lon], {icon: dotIcon('#3dbb74', 5)}).addTo(map);
       }
       // Label
@@ -2229,7 +2235,7 @@ function animateMedMap() {
   setTimeout(() => {
     growLine([35.0,32.0],[36.8,36.2],'rgba(167,139,250,0.6)',1.5,1800,null);
     typeLabel(36.2,34.2,'SM-3 INTERCEPT ARC','rgba(167,139,250,0.5)',null,null,1600);
-  }, 5600);
+  }, 6100);
 
   // T=5000  Distance reference line Athens → Dörtyol (subtle)
   setTimeout(() => {
