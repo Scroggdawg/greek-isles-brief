@@ -1855,13 +1855,10 @@ function animateWarMap() {
   const map = window['war-map-inst'];
   if(!map) return;
 
-  // Helper: typing label marker
   function addTypingLbl(lat, lon, text, color, sub, subColor, delay) {
     setTimeout(() => {
       const uid = 'wm-' + Math.random().toString(36).substr(2,6);
-      const subHtml = sub
-        ? `<br><span style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'}">${sub}</span>`
-        : '';
+      const subHtml = sub ? `<br><span style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'}">${sub}</span>` : '';
       const html = `<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 10px #060810;line-height:1.6"><span id="${uid}"></span>${subHtml}</div>`;
       const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],html});
       const marker = L.marker([lat,lon],{icon}).addTo(map);
@@ -1879,127 +1876,89 @@ function animateWarMap() {
     }, delay);
   }
 
-  // Helper: pulse dot with delay
   function addPulse(lat, lon, color, sz, delay) {
     setTimeout(() => {
       L.marker([lat,lon],{icon:pulseIcon(color,sz)}).addTo(map);
     }, delay);
   }
 
-  // Helper: animated dot — scales from 0 to full size over 400ms (easeOutQuad)
-  function addAnimDot(lat, lon, r, color, opacity, delay) {
+  function addFill(lat, lon, r, color, opacity, delay) {
     setTimeout(() => {
-      const c = L.circle([lat,lon],{radius:1,color:'rgba(0,0,0,0)',fill:true,fillColor:color,fillOpacity:0}).addTo(map);
-      const c2 = L.circle([lat,lon],{radius:1,color:'rgba(0,0,0,0)',fill:true,fillColor:color,fillOpacity:0}).addTo(map);
-      const t0 = performance.now();
-      function step(now) {
-        const t = Math.min((now - t0) / 400, 1);
-        const ease = t * (2 - t);
-        c.setRadius(r * ease);
-        c.setStyle({fillOpacity: opacity * ease});
-        c2.setRadius(r * 2 * ease);
-        c2.setStyle({fillOpacity: opacity * 0.22 * ease});
-        if(t < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
+      L.circle([lat,lon],{radius:r,color:'rgba(0,0,0,0)',fill:true,fillColor:color,fillOpacity:opacity}).addTo(map);
+      L.circle([lat,lon],{radius:r*2,color:'rgba(0,0,0,0)',fill:true,fillColor:color,fillOpacity:opacity*0.22}).addTo(map);
     }, delay);
   }
 
-  // Helper: animated line (point interpolation, no flash)
-  function addAnimLine(from, to, color, weight, dashArray, drawMs, delay) {
-    setTimeout(() => {
-      const opts = {color, weight};
-      if(dashArray) opts.dashArray = dashArray;
-      const line = L.polyline([from], opts).addTo(map);
-      const t0 = performance.now();
-      function step(now) {
-        const t = Math.min((now - t0) / drawMs, 1);
-        const lat = from[0] + (to[0] - from[0]) * t;
-        const lng = from[1] + (to[1] - from[1]) * t;
-        line.setLatLngs([from, [lat, lng]]);
-        if(t < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }, delay);
-  }
+  // ── SEQUENCE ──
 
-  // ── PHASE 1: Labels type in (T=0 → T=1500) ──
-  addTypingLbl(36.2, 52.2,  'TEHRAN',             'rgba(192,57,43,0.9)', '~2,100 mi from Athens', null,    0);
-  addTypingLbl(37.97,24.5,  'ATHENS',             '#3dbb74',             'Level 1',               null,    500);
-  addTypingLbl(36.8, 37.0,  '4\u00d7 INTERCEPTS', '#a78bfa',             'Turkey \u2014 all stopped', null, 1000);
-  addTypingLbl(34.9, 33.3,  'AKROTIRI',           '#e07030',             'Hezbollah drone \u00b7 L3', null, 1500);
+  // STEP 1 — Athens dot then label (500ms gap between dot and label)
+  addPulse(37.97, 23.7, '#3dbb74', 12, 0);
+  addTypingLbl(37.97, 24.5, 'ATHENS', '#3dbb74', 'Level 1', null, 500);
 
-  // ── PHASE 2: Heatmap dots scale in (T=2400 → T=4200) ──
-  // Iranian strike concentrations (red)
-  addAnimDot(35.7,  51.4,  85000, '#c0392b', 0.41, 2400);
-  addAnimDot(26,    51,    78000, '#c0392b', 0.38, 2550);
-  addAnimDot(24.5,  54.4,  58000, '#c0392b', 0.35, 2700);
-  addAnimDot(25,    56.5,  52000, '#c0392b', 0.40, 2850);
-  addAnimDot(24.7,  46.7,  48000, '#c0392b', 0.28, 3000);
-  addAnimDot(33.5,  44.4,  38000, '#c0392b', 0.22, 3150);
-  addAnimDot(29.4,  47.9,  32000, '#c0392b', 0.26, 3300);
-  // US/Israeli strikes (blue)
-  addAnimDot(35.7,  51.4,  52000, '#5aa0e8', 0.25, 3500);
-  addAnimDot(29.5,  50.0,  48000, '#5aa0e8', 0.30, 3650);
-  addAnimDot(25,    56.3,  32000, '#5aa0e8', 0.19, 3800);
-  addAnimDot(31.5,  34.8,  28000, '#5aa0e8', 0.20, 3950);
-  // Hezbollah dot (orange)
-  addAnimDot(33.8,  35.5,  22000, '#e07030', 0.45, 4200);
-
-  // ── PHASE 3: Key markers, line, circle (T=4600 → T=6500) ──
-  addPulse(36.8, 36.2, '#a78bfa', 9, 4600);   // NATO intercept pulse
-  addPulse(37.97, 23.7, '#3dbb74', 12, 4800);  // Athens pulse
-  setTimeout(() => {                             // Tehran dot
+  // STEP 2 — Tehran dot then label
+  setTimeout(() => {
     L.marker([35.7,51.4],{icon:dotIcon('#c0392b',10)}).addTo(map);
-  }, 5000);
+  }, 1200);
+  addTypingLbl(36.2, 52.2, 'TEHRAN', 'rgba(192,57,43,0.9)', '~2,100 mi from Athens', null, 1700);
 
-  // Animated reference line Athens → Tehran (1200ms draw)
-  addAnimLine([37.97,23.7], [35.7,51.4], 'rgba(255,255,255,0.09)', 1, '3 4', 1200, 5300);
+  // STEP 3 — Akrotiri dot then label
   setTimeout(() => {
+    L.circle([33.8,35.5],{radius:22000,color:'rgba(0,0,0,0)',fill:true,fillColor:'#e07030',fillOpacity:.45}).addTo(map);
+  }, 2400);
+  addTypingLbl(34.9, 33.3, 'AKROTIRI', '#e07030', 'Hezbollah drone \u00b7 L3', null, 2900);
+
+  // STEP 4 — USS Oscar Austin dot then label
+  addPulse(35.5, 34.5, '#5aa0e8', 10, 3600);
+  addTypingLbl(35.7, 34.8, 'USS OSCAR AUSTIN', '#5aa0e8', 'Arleigh Burke \u00b7 SM-3', null, 4100);
+
+  // STEP 5 — NATO intercepts dot then label
+  addPulse(36.8, 36.2, '#a78bfa', 9, 4800);
+  addTypingLbl(36.8, 37.0, '4\u00d7 INTERCEPTS', '#a78bfa', 'Turkey \u2014 all stopped', null, 5300);
+
+  // STEP 6 — Heat map fills: Iranian red dots (staggered)
+  addFill(35.7,  51.4,  85000, '#c0392b', 0.41, 6200);
+  addFill(26,    51,    78000, '#c0392b', 0.38, 6350);
+  addFill(24.5,  54.4,  58000, '#c0392b', 0.35, 6500);
+  addFill(25,    56.5,  52000, '#c0392b', 0.40, 6650);
+  addFill(24.7,  46.7,  48000, '#c0392b', 0.28, 6800);
+  addFill(33.5,  44.4,  38000, '#c0392b', 0.22, 6950);
+  addFill(29.4,  47.9,  32000, '#c0392b', 0.26, 7100);
+
+  // STEP 6b — US/Israeli blue fills
+  addFill(35.7,  51.4,  52000, '#5aa0e8', 0.25, 7300);
+  addFill(29.5,  50.0,  48000, '#5aa0e8', 0.30, 7450);
+  addFill(25,    56.3,  32000, '#5aa0e8', 0.19, 7600);
+  addFill(31.5,  34.8,  28000, '#5aa0e8', 0.20, 7750);
+
+  // STEP 7 — Geodesic circle around Tehran (draws in over 2.5s)
+  setTimeout(() => {
+    const pts = geodesicCircle(35.7, 51.4, 1500, 72);
+    L.polygon(pts, {
+      color: 'rgba(192,57,43,0.45)',
+      weight: 1.5,
+      fill: true,
+      fillColor: '#c0392b',
+      fillOpacity: 0.04
+    }).addTo(map);
+  }, 8200);
+
+  // Fleet dots (after circle, subtle)
+  setTimeout(() => {
+    L.marker([34.5,31.5],{icon:pulseIcon('#5aa0e8',11)}).addTo(map);
+    addTypingLbl(34.7, 31.8, 'USS GERALD R. FORD', '#5aa0e8', 'CVN-78 \u00b7 Carrier Strike Group', null, 400);
+  }, 9000);
+  setTimeout(() => {
+    L.marker([35.5,34.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
+    L.marker([36.8,35.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
+    L.marker([33.8,33.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
+    L.marker([35.0,31.0],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
+  }, 9400);
+
+  // Subtle reference line Athens → Tehran
+  setTimeout(() => {
+    L.polyline([[37.97,23.7],[35.7,51.4]],{color:'rgba(255,255,255,0.09)',weight:1,dashArray:'3 4'}).addTo(map);
     L.marker([37.2,38],{icon:lbl('~2,100 MI','rgba(255,255,255,0.25)')}).addTo(map);
-  }, 5800);
-
-  // T=4600  USS Oscar Austin — the ship that made the intercepts
-  setTimeout(() => {
-    L.marker([35.5,34.5],{icon:pulseIcon('#5aa0e8',10)}).addTo(map);
-    L.marker([35.3,34.8],{icon:lbl('USS OSCAR AUSTIN','#5aa0e8','DDG-79 · 4× SM-3 intercepts')}).addTo(map);
-  }, 4600);
-
-  // Geodesic circle — draws stroke then fills
-  setTimeout(() => {
-    const pts = geodesicCircle(35.7, 51.4, 850, 72);
-    // Draw the outline progressively over 1600ms
-    const stroke = L.polyline([], {color:'rgba(192,57,43,0.45)',weight:1.5,dashArray:'6 4'}).addTo(map);
-    const drawMs = 1600;
-    const t0 = performance.now();
-    let idx = 0;
-    function step(now) {
-      const t = Math.min((now - t0) / drawMs, 1);
-      const target = Math.floor(t * (pts.length - 1));
-      while(idx <= target && idx < pts.length) {
-        stroke.addLatLng(pts[idx]);
-        idx++;
-      }
-      if(t < 1) { requestAnimationFrame(step); }
-      else {
-        // Close the ring
-        stroke.addLatLng(pts[0]);
-        // Fade in the fill over 800ms
-        const fill = L.polygon(pts, {
-          color:'rgba(0,0,0,0)',weight:0,
-          fill:true,fillColor:'#c0392b',fillOpacity:0
-        }).addTo(map);
-        const f0 = performance.now();
-        function fadeStep(now) {
-          const ft = Math.min((now - f0) / 800, 1);
-          fill.setStyle({fillOpacity: 0.06 * ft});
-          if(ft < 1) requestAnimationFrame(fadeStep);
-        }
-        requestAnimationFrame(fadeStep);
-      }
-    }
-    requestAnimationFrame(step);
-  }, 6500);
+  }, 9800);
 }
 
 // ═══════════════════════════════════════
@@ -2410,7 +2369,7 @@ function animateMedMap() {
   setTimeout(() => {
     growLine([35.0,32.0],[36.8,36.2],'rgba(167,139,250,0.6)',1.5,1800,null);
     typeLabel(36.2,34.2,'SM-3 INTERCEPT ARC','rgba(167,139,250,0.5)',null,null,1600);
-  }, 6600);
+  }, 6750);
 
   // T=5000  Distance reference line Athens → Dörtyol (subtle)
   setTimeout(() => {
