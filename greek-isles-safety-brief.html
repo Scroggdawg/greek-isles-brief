@@ -492,7 +492,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
             <div class="mono-label">If San Antonio = Athens</div>
             <div class="analogy-box">
               <div class="aline">The <strong>nearest missile was intercepted</strong> at the equivalent of <strong>Kansas City, MO</strong> — ~690 miles north of San Antonio.</div>
-              <div class="aline">The <strong>missiles were launched</strong> from the equivalent of <strong>Winnipeg, Canada</strong> — ~1,530 miles north of San Antonio. Tehran is Canada.</div>
+              <div class="aline">The <strong>missiles were launched</strong> from the equivalent of <strong>New York City</strong> — ~1,530 miles from San Antonio. If San Antonio is Athens, Tehran is New York.</div>
               <div class="aline">The <strong>Hezbollah drone strike</strong> on UK base Akrotiri (Cyprus) is the equivalent of <strong>Wichita, KS</strong>. US issued advisory for Wichita. San Antonio: unchanged.</div>
             </div>
           </div>
@@ -509,7 +509,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
               <div class="dist-note">Farthest Iran has struck anything in this war. 4× intercepted before reaching soil.</div>
             </div>
             <div class="dist-row">
-              <div class="dist-top"><span class="dist-place">Tehran, Iran (missile origin)</span><span class="dist-mi" style="color:var(--red)">~1,530 mi ≡ Winnipeg, Canada</span></div>
+              <div class="dist-top"><span class="dist-place">Tehran, Iran (missile origin)</span><span class="dist-mi" style="color:var(--red)">~1,530 mi ≡ New York City</span></div>
               <div class="dist-track"><div class="dist-fill" id="df3" style="background:linear-gradient(to right,rgba(192,57,43,.3),var(--red))"></div></div>
               <div class="dist-note">Outside Iran's stated doctrine limit of 2,000 km (1,240 mi). Athens is nearly twice as far as Iran's farthest actual strike.</div>
             </div>
@@ -521,7 +521,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
             <div id="us-map" style="width:100%;height:100%"></div>
           </div>
           <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);margin-top:8px;line-height:1.9">
-            <div><span style="color:var(--safe)">●</span> San Antonio = Athens &nbsp;<span style="color:var(--orange)">●</span> Wichita = Akrotiri &nbsp;<span style="color:var(--purple)">●</span> Kansas City = Dörtyol &nbsp;<span style="color:var(--red)">●</span> Winnipeg = Tehran</div>
+            <div><span style="color:var(--safe)">●</span> San Antonio = Athens &nbsp;<span style="color:var(--orange)">●</span> Wichita = Akrotiri &nbsp;<span style="color:var(--purple)">●</span> Kansas City = Dörtyol &nbsp;<span style="color:var(--red)">●</span> New York = Tehran</div>
           </div>
         </div>
       </div>
@@ -884,7 +884,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
   <div class="v-grid io-watch">
     <div class="v-cell"><div class="v-num" style="color:var(--safe)">1</div><div class="v-unit">Greece Advisory</div><div class="v-desc">Level 1 — unchanged through 35+ days of active combat operations.</div></div>
     <div class="v-cell"><div class="v-num" style="color:var(--safe)">Zero</div><div class="v-unit">Strikes near Greece</div><div class="v-desc">Every missile and drone: Gulf states, Israel, US military bases.</div></div>
-    <div class="v-cell"><div class="v-num" style="color:var(--gold)">1,530 mi</div><div class="v-unit">Athens → Tehran</div><div class="v-desc">Nearly twice Iran's farthest actual strike. Beyond Iran's own 2,000 km doctrine limit.</div></div>
+    <div class="v-cell"><div class="v-num" style="color:var(--gold)">1,530 mi</div><div class="v-unit">Athens → Tehran</div><div class="v-desc">New York City from San Antonio. Beyond Iran's own doctrine limit. Nearly twice their farthest strike.</div></div>
     <div class="v-cell"><div class="v-num" style="color:var(--purple)">4/4</div><div class="v-unit">NATO Intercepts</div><div class="v-desc">Four missiles toward Turkey. All four stopped in under 10 minutes each.</div></div>
     <div class="v-cell"><div class="v-num" style="color:var(--dim2)">38 yrs</div><div class="v-unit">Since last incident</div><div class="v-desc">1988 Poros ferry. You are on a private charter. Categorically different.</div></div>
     <div class="v-cell"><div class="v-num" style="color:var(--gold)">Jun 18</div><div class="v-unit">Departure</div><div class="v-desc">Maiora 126, from Athens. 29 knots and 1,500nm range if you need it.</div></div>
@@ -1468,7 +1468,7 @@ function beatLineAT(cb){
             const ref = document.createElement('div');
             ref.style.cssText = 'margin-top:5px;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:.09em;color:rgba(255,255,255,0.82);text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810;line-height:1.4';
             outer.appendChild(ref);
-            const ref2 = 'San Antonio \u2192 Winnipeg \u00b7 1,417 mi';
+            const ref2 = 'San Antonio \u2192 New York City \u00b7 1,581 mi';
             let j=0;
             const type2=()=>{ if(j<ref2.length){ ref.textContent+=ref2[j++]; setTimeout(type2,35+Math.random()*15); } };
             setTimeout(type2,300);
@@ -2137,13 +2137,13 @@ function animateUSMap() {
   }, 1400);
   addTypingLabel(39.3, -93.7, 'INTERCEPTED AT|KANSAS CITY = D\u00d6RTYOL', '#a78bfa', '~690 mi N · farthest intercept', null, 1600);
 
-  // T=2400  Winnipeg pulse in
-  addPulseDot(49.90, -97.14, '#c0392b', 11, 2400);
-  addTypingLabel(50.1, -96.3, 'WINNIPEG = TEHRAN', '#c0392b', '~1,530 mi N · Launch origin', null, 2600);
+  // T=2400  New York City pulse in
+  addPulseDot(40.71, -74.01, '#c0392b', 11, 2400);
+  addTypingLabel(41.0, -73.2, 'NEW YORK = TEHRAN', '#c0392b', '~1,530 mi NE · Launch origin', null, 2600);
 
-  // T=3600  Winnipeg → Kansas City dashed missile path draws in (1800ms draw)
+  // T=3600  NYC → Kansas City dashed missile path draws in (1800ms draw)
   addAnimatedLine(
-    [[49.90,-97.14],[39.10,-94.58]],
+    [[40.71,-74.01],[39.10,-94.58]],
     'rgba(192,57,43,0.5)', 2, null, 1800, 3600
   );
 
