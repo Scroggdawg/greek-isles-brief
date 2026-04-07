@@ -451,7 +451,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
             <div class="mono-label">Map key</div>
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:14px 16px;display:flex;flex-direction:column;gap:9px;font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2)">
               <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);flex-shrink:0"></div>Iranian strike concentration</div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0"></div>US / Israeli strikes · American fleet</div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0"></div>US / Israeli strikes · USS Oscar Austin</div>
               <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--safe);box-shadow:0 0 7px var(--safe);flex-shrink:0"></div>Athens — Level 1</div>
               <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0"></div>4× NATO intercepts (Turkey)</div>
               <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0"></div>Akrotiri, Cyprus — Hezbollah drone</div>
@@ -1955,22 +1955,11 @@ function animateWarMap() {
     L.marker([37.2,38],{icon:lbl('~2,100 MI','rgba(255,255,255,0.25)')}).addTo(map);
   }, 5800);
 
-  // T=4600  US fleet dots (blue) — Eastern Med positions
+  // T=4600  USS Oscar Austin — the ship that made the intercepts
   setTimeout(() => {
-    // Gerald R. Ford CSG
-    L.marker([34.5,31.5],{icon:pulseIcon('#5aa0e8',11)}).addTo(map);
-    L.marker([34.7,31.8],{icon:lbl('USS GERALD R. FORD','#5aa0e8','CVN-78 · Carrier Strike Group')}).addTo(map);
+    L.marker([35.5,34.5],{icon:pulseIcon('#5aa0e8',10)}).addTo(map);
+    L.marker([35.3,34.8],{icon:lbl('USS OSCAR AUSTIN','#5aa0e8','DDG-79 · 4× SM-3 intercepts')}).addTo(map);
   }, 4600);
-  setTimeout(() => {
-    // Oscar Austin
-    L.marker([35.5,34.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-  }, 4800);
-  setTimeout(() => {
-    // Roosevelt + Bulkeley + Hudner — scattered
-    L.marker([36.8,35.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-    L.marker([33.8,33.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-    L.marker([35.0,31.0],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-  }, 5000);
 
   // Geodesic circle — draws stroke then fills
   setTimeout(() => {
@@ -2210,15 +2199,6 @@ function animateShieldMap() {
     typeLabel(22.2, 60.3, 'USS ABRAHAM LINCOLN', '#5aa0e8', 'CVN-72 · Arabian Sea · Lincoln CSG', 200);
   }, 5200);
 
-  // T=6500 Dotted line Tehran → Athens (the blocked path)
-  setTimeout(() => {
-    L.polyline([[35.7,51.4],[37.97,23.7]], {
-      color: 'rgba(192,57,43,0.3)',
-      weight: 1,
-      dashArray: '4 5'
-    }).addTo(map);
-    typeLabel(37.0, 38.0, '2,100 MI · OUTSIDE IRAN RANGE', 'rgba(255,255,255,0.22)', null, 400);
-  }, 6500);
 }
 
 function initAirportMap() {
