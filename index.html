@@ -1102,6 +1102,76 @@ function animateLine(coords, opts, drawMs) {
   return line;
 }
 
+function animateDottedLine(coords, opts, drawMs) {
+  // Draw a dotted/dashed Leaflet polyline that animates from origin to destination.
+  // Uses an SVG clipPath rect that expands left-to-right to reveal pre-drawn dots.
+  const line = L.polyline(coords, opts).addTo(heroMap);
+  heroLayers.push(line);
+
+  setTimeout(() => {
+    const path = line.getElement();
+    if (!path) return;
+
+    // Hide initially
+    path.style.visibility = 'hidden';
+
+    // Get the SVG that Leaflet rendered this path into
+    const svg = path.closest('svg');
+    if (!svg) return;
+
+    // Create a unique clip ID
+    const clipId = 'clip-dot-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
+
+    // Get the bounding box of the path to size the clip rect
+    const bbox = path.getBBox();
+    const pad = 20;
+
+    // Build the clipPath element with an animating rect
+    const defs = svg.querySelector('defs') || svg.insertBefore(
+      document.createElementNS('http://www.w3.org/2000/svg', 'defs'),
+      svg.firstChild
+    );
+
+    const clipEl = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    clipEl.setAttribute('id', clipId);
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', bbox.x - pad);
+    rect.setAttribute('y', bbox.y - pad);
+    rect.setAttribute('width', '0');
+    rect.setAttribute('height', bbox.height + pad * 2);
+
+    clipEl.appendChild(rect);
+    defs.appendChild(clipEl);
+
+    // Apply the clip to the path
+    path.setAttribute('clip-path', 'url(#' + clipId + ')');
+    path.style.visibility = 'visible';
+
+    // Animate the rect width from 0 to full in drawMs
+    const fullWidth = bbox.width + pad * 2;
+    let start = null;
+
+    function expandClip(ts) {
+      if (!start) start = ts;
+      const elapsed = ts - start;
+      const progress = Math.min(elapsed / drawMs, 1);
+      rect.setAttribute('width', (fullWidth * progress).toFixed(2));
+      if (progress < 1) {
+        requestAnimationFrame(expandClip);
+      } else {
+        // Animation done — remove clip so line stays visible if map redraws
+        path.removeAttribute('clip-path');
+        clipEl.remove();
+      }
+    }
+
+    requestAnimationFrame(expandClip);
+  }, 60);
+
+  return line;
+}
+
 function fadeLayer(layer, ms) {
   const el = layer.getElement ? layer.getElement() : null;
   if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
@@ -1456,9 +1526,9 @@ function beatLineTD(cb){
     const dot = L.marker([36.8,36.2],{icon:dotIcon('#a78bfa',8)}).addTo(heroMap);
     addHeroLayer(dot);
     // Tehran→Dörtyol line (purple)
-    beatRef.lineTD = animateLine(
+    beatRef.lineTD = animateDottedLine(
       [[35.7,51.4],[36.8,36.2]],
-      {color:'rgba(167,139,250,0.65)',weight:1.5,dashArray:'5 4'},
+      {color:'rgba(167,139,250,0.65)',weight:1.5,dashArray:'4 6'},
       400
     );
     // Dörtyol fill circle
@@ -1491,9 +1561,9 @@ function beatAkrotiri(cb){
     const albl = L.marker([34.5,33.1],{icon:lbl('AKROTIRI','rgba(224,112,48,0.65)')}).addTo(heroMap);
     addHeroLayer(albl);
     // Line Akrotiri→Athens
-    beatRef.lineAkr = animateLine(
+    beatRef.lineAkr = animateDottedLine(
       [[34.6,32.97],[37.97,23.7]],
-      {color:'rgba(224,112,48,0.55)',weight:1.2,dashArray:'4 4'},
+      {color:'rgba(224,112,48,0.55)',weight:1.2,dashArray:'5 7'},
       380
     );
     // Distance label
@@ -1930,27 +2000,44 @@ function animateWarMap() {
   addFill(25,    56.3,  32000, '#5aa0e8', 0.19, 7600);
   addFill(31.5,  34.8,  28000, '#5aa0e8', 0.20, 7750);
 
-  // STEP 7 — Geodesic circle around Tehran (dashed ring + fade fill)
+  // STEP 7 — Geodesic circle around Tehran (animated dashed ring draw + fade fill)
   setTimeout(() => {
     const pts = geodesicCircle(35.7, 51.4, 850, 72);
+    // Stroke ring — starts invisible, draws via dashoffset
     const ring = L.polyline(pts.concat([pts[0]]), {
       color: 'rgba(192,57,43,0.55)',
       weight: 1.5,
-      dashArray: '6 5'
+      dashArray: '5 8',
+      opacity: 0
     }).addTo(map);
+    // Fill polygon — fades in after ring finishes
     const fillPoly = L.polygon(pts, {
       stroke: false,
       fill: true,
       fillColor: '#c0392b',
       fillOpacity: 0
     }).addTo(map);
+    // Animate ring draw
     setTimeout(() => {
-      const el = fillPoly.getElement();
-      if(el) {
-        el.style.transition = 'fill-opacity 2s ease';
-        el.setAttribute('fill-opacity', '0.06');
-      }
-    }, 800);
+      const strokeEl = ring.getElement();
+      if (!strokeEl) return;
+      const circumference = strokeEl.getTotalLength();
+      strokeEl.style.strokeDasharray = '5 8';
+      strokeEl.style.strokeDashoffset = String(circumference);
+      strokeEl.style.opacity = '1';
+      strokeEl.style.transition = 'none';
+      requestAnimationFrame(() => {
+        strokeEl.style.transition = 'stroke-dashoffset 1800ms linear';
+        strokeEl.style.strokeDashoffset = '0';
+      });
+      // After ring finishes, fade in fill
+      setTimeout(() => {
+        const fillEl = fillPoly.getElement();
+        if (!fillEl) return;
+        fillEl.style.transition = 'fill-opacity 800ms ease';
+        fillEl.setAttribute('fill-opacity', '0.07');
+      }, 1900);
+    }, 150);
   }, 8200);
 
   // Subtle reference line Athens → Tehran
