@@ -1932,23 +1932,25 @@ function animateWarMap() {
 
   // STEP 7 — Geodesic circle around Tehran (dashed ring + fade fill)
   setTimeout(() => {
-    const pts = geodesicCircle(35.7, 51.4, 1500, 72);
+    const pts = geodesicCircle(35.7, 51.4, 850, 72);
     const ring = L.polyline(pts.concat([pts[0]]), {
       color: 'rgba(192,57,43,0.55)',
       weight: 1.5,
       dashArray: '6 5'
     }).addTo(map);
     const fillPoly = L.polygon(pts, {
-      color: 'rgba(0,0,0,0)',
+      stroke: false,
       fill: true,
       fillColor: '#c0392b',
       fillOpacity: 0
     }).addTo(map);
     setTimeout(() => {
       const el = fillPoly.getElement();
-      if(el) { el.style.transition = 'fill-opacity 1.5s ease'; }
-      fillPoly.setStyle({fillOpacity: 0.05});
-    }, 600);
+      if(el) {
+        el.style.transition = 'fill-opacity 2s ease';
+        el.setAttribute('fill-opacity', '0.06');
+      }
+    }, 800);
   }, 8200);
 
   // Subtle reference line Athens → Tehran
