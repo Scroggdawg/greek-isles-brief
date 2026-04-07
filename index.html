@@ -1930,29 +1930,26 @@ function animateWarMap() {
   addFill(25,    56.3,  32000, '#5aa0e8', 0.19, 7600);
   addFill(31.5,  34.8,  28000, '#5aa0e8', 0.20, 7750);
 
-  // STEP 7 — Geodesic circle around Tehran (draws in over 2.5s)
+  // STEP 7 — Geodesic circle around Tehran (dashed ring + fade fill)
   setTimeout(() => {
     const pts = geodesicCircle(35.7, 51.4, 1500, 72);
-    L.polygon(pts, {
-      color: 'rgba(192,57,43,0.45)',
+    const ring = L.polyline(pts.concat([pts[0]]), {
+      color: 'rgba(192,57,43,0.55)',
       weight: 1.5,
+      dashArray: '6 5'
+    }).addTo(map);
+    const fillPoly = L.polygon(pts, {
+      color: 'rgba(0,0,0,0)',
       fill: true,
       fillColor: '#c0392b',
-      fillOpacity: 0.04
+      fillOpacity: 0
     }).addTo(map);
+    setTimeout(() => {
+      const el = fillPoly.getElement();
+      if(el) { el.style.transition = 'fill-opacity 1.5s ease'; }
+      fillPoly.setStyle({fillOpacity: 0.05});
+    }, 600);
   }, 8200);
-
-  // Fleet dots (after circle, subtle)
-  setTimeout(() => {
-    L.marker([34.5,31.5],{icon:pulseIcon('#5aa0e8',11)}).addTo(map);
-    addTypingLbl(34.7, 31.8, 'USS GERALD R. FORD', '#5aa0e8', 'CVN-78 \u00b7 Carrier Strike Group', null, 400);
-  }, 9000);
-  setTimeout(() => {
-    L.marker([35.5,34.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-    L.marker([36.8,35.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-    L.marker([33.8,33.5],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-    L.marker([35.0,31.0],{icon:dotIcon('#5aa0e8',8)}).addTo(map);
-  }, 9400);
 
   // Subtle reference line Athens → Tehran
   setTimeout(() => {
