@@ -1078,6 +1078,141 @@ let heroMap;
 const heroLayers = [];          // all layers added during beats 3-8
 const beatRef = {};             // named refs for cross-beat fading
 
+// ── Canvas overlay for animated dotted lines ──
+// All line/arc animation uses a single canvas sized to the hero map.
+// This avoids SVG pathLength normalization and Leaflet _updateStyle interference.
+
+function getHeroCanvas() {
+  let c = document.getElementById('hero-canvas-overlay');
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.id = 'hero-canvas-overlay';
+  c.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:201';
+  const mapEl = document.getElementById('hero-map-bg');
+  if (!mapEl) return null;
+  mapEl.appendChild(c);
+  // Size canvas to map container in device pixels
+  function sizeCanvas() {
+    const rect = mapEl.getBoundingClientRect();
+    c.width  = rect.width  * window.devicePixelRatio;
+    c.height = rect.height * window.devicePixelRatio;
+    c.style.width  = rect.width  + 'px';
+    c.style.height = rect.height + 'px';
+  }
+  sizeCanvas();
+  window.addEventListener('resize', sizeCanvas);
+  return c;
+}
+
+// Draw an animated dotted line from (x1,y1) to (x2,y2).
+// dot/gap are in real CSS pixels. drawMs = duration. onDone called when complete.
+// Returns a cancel function.
+function canvasDrawLine(x1, y1, x2, y2, color, dotPx, gapPx, widthPx, drawMs, onDone) {
+  const c = getHeroCanvas();
+  if (!c) return () => {};
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio;
+  let cancelled = false;
+  const startT = performance.now();
+
+  function frame(now) {
+    if (cancelled) return;
+    const prog = Math.min((now - startT) / drawMs, 1);
+    const ex = x1 + (x2 - x1) * prog;
+    const ey = y1 + (y2 - y1) * prog;
+
+    // Redraw — clear only the bounding rect of this line plus stroke width
+    // (We use clearRect on full canvas since multiple lines may overlap)
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = widthPx;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([dotPx, gapPx]);
+    ctx.stroke();
+    ctx.restore();
+
+    if (prog < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(frame);
+  return () => { cancelled = true; };
+}
+
+// Draw an animated dotted arc (circle ring) centered at (cx,cy) with radius r.
+// Draws clockwise from 12 o'clock over drawMs. onDone called when complete.
+// Returns a cancel function.
+function canvasDrawArc(cx, cy, r, color, dotPx, gapPx, widthPx, drawMs, onDone) {
+  const c = getHeroCanvas();
+  if (!c) return () => {};
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio;
+  let cancelled = false;
+  const startT = performance.now();
+  const startAngle = -Math.PI / 2; // 12 o'clock
+
+  function frame(now) {
+    if (cancelled) return;
+    const prog = Math.min((now - startT) / drawMs, 1);
+    const endAngle = startAngle + Math.PI * 2 * prog;
+
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = widthPx;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([dotPx, gapPx]);
+    ctx.stroke();
+    ctx.restore();
+
+    if (prog < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(frame);
+  return () => { cancelled = true; };
+}
+
+// Fade out the canvas over fadeMs, then clear it.
+function canvasFade(fadeMs) {
+  const c = document.getElementById('hero-canvas-overlay');
+  if (!c) return;
+  const startT = performance.now();
+  function frame(now) {
+    const prog = Math.min((now - startT) / fadeMs, 1);
+    c.style.opacity = String(1 - prog);
+    if (prog < 1) requestAnimationFrame(frame);
+    else {
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      c.style.opacity = '1';
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// Clear the canvas immediately (between beats).
+function canvasClear() {
+  const c = document.getElementById('hero-canvas-overlay');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+}
+
 // ── Leaflet animation helpers ──
 
 function animateLine(coords, opts, drawMs) {
@@ -1400,60 +1535,25 @@ function beatLineAT(cb){
   const rPx   = Math.sqrt(Math.pow(athPt.x-tehPt.x,2)+Math.pow(athPt.y-tehPt.y,2));
   const midPt = { x:(tehPt.x+athPt.x)/2, y:(tehPt.y+athPt.y)/2 };
 
+  // Canvas overlay handles all line/arc drawing — no SVG needed
+  canvasClear();
+  // circFill is an SVG circle for the fill fade-in (canvas can't easily fade-in fill separately)
   const old = document.getElementById('hero-overlay-svg');
   if(old) old.remove();
-
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.id = 'hero-overlay-svg';
   svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-
-  // SOLID LINE — pathLength=1 lets us animate with dashoffset 1→0
-  const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
-  lineEl.setAttribute('x1', tehPt.x);
-  lineEl.setAttribute('y1', tehPt.y);
-  lineEl.setAttribute('x2', athPt.x);
-  lineEl.setAttribute('y2', athPt.y);
-  lineEl.setAttribute('stroke','rgba(192,57,43,0.8)');
-  lineEl.setAttribute('stroke-width','1.5');
-  lineEl.setAttribute('pathLength','1');
-  lineEl.style.strokeDasharray = '1';
-  lineEl.style.strokeDashoffset = '1';
-
-  // CIRCLE RING — same pathLength trick
-  const circRing = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  circRing.setAttribute('cx', tehPt.x);
-  circRing.setAttribute('cy', tehPt.y);
-  circRing.setAttribute('r',  rPx);
-  circRing.setAttribute('fill','none');
-  circRing.setAttribute('stroke','rgba(192,57,43,0.55)');
-  circRing.setAttribute('stroke-width','1.2');
-  circRing.setAttribute('pathLength','1');
-  circRing.style.strokeDasharray = '1';
-  circRing.style.strokeDashoffset = '1';
-
-  // CIRCLE FILL — fades in after ring draws
   const circFill = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  circFill.setAttribute('cx', tehPt.x);
-  circFill.setAttribute('cy', tehPt.y);
-  circFill.setAttribute('r',  rPx);
-  circFill.setAttribute('fill','rgba(192,57,43,0.06)');
-  circFill.setAttribute('stroke','none');
+  circFill.setAttribute('cx', tehPt.x); circFill.setAttribute('cy', tehPt.y);
+  circFill.setAttribute('r', rPx);
+  circFill.setAttribute('fill','rgba(192,57,43,0.06)'); circFill.setAttribute('stroke','none');
   circFill.style.opacity = '0';
-
   svg.appendChild(circFill);
-  svg.appendChild(circRing);
-  svg.appendChild(lineEl);
   heroMap.getPanes().overlayPane.appendChild(svg);
-
-  // Reposition SVG elements when map moves (keeps overlay geo-anchored)
   function repositionOverlay(){
-    const t = heroMap.latLngToContainerPoint([35.7,  51.4]);
+    const t = heroMap.latLngToContainerPoint([35.7, 51.4]);
     const a = heroMap.latLngToContainerPoint([37.97, 23.7]);
     const r = Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2));
-    lineEl.setAttribute('x1',t.x); lineEl.setAttribute('y1',t.y);
-    lineEl.setAttribute('x2',a.x); lineEl.setAttribute('y2',a.y);
-    circRing.setAttribute('cx',t.x); circRing.setAttribute('cy',t.y);
-    circRing.setAttribute('r',r);
     circFill.setAttribute('cx',t.x); circFill.setAttribute('cy',t.y);
     circFill.setAttribute('r',r);
   }
@@ -1463,13 +1563,10 @@ function beatLineAT(cb){
   const lineMs = 1400;
   const circMs = 6500;
 
-  // STEP 1: Draw line
-  // setTimeout(100) + double rAF = confirmed working approach
+  // STEP 1: Draw Tehran→Athens line via Canvas
   setTimeout(()=>{
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      lineEl.style.transition = 'stroke-dashoffset ' + lineMs + 'ms linear';
-      lineEl.style.strokeDashoffset = '0';
-    }));
+    canvasDrawLine(tehPt.x, tehPt.y, athPt.x, athPt.y,
+      'rgba(192,57,43,0.85)', 4, 7, 1.5, lineMs, null);
   }, 100);
 
   // STEP 2: Distance label appears above line midpoint, after line finishes
@@ -1510,15 +1607,13 @@ function beatLineAT(cb){
     }, 80);
   }, lineMs + 400);
 
-  // STEP 3: Draw circle after label finishes typing (~1.8s after label appears)
+  // STEP 3: Draw strike radius circle via Canvas
   const circStart = lineMs + 2300;
   setTimeout(()=>{
-    setTimeout(()=>{
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        circRing.style.transition = 'stroke-dashoffset ' + circMs + 'ms linear';
-        circRing.style.strokeDashoffset = '0';
-      }));
-    }, 100);
+    // Clear the line first, then draw the arc
+    canvasClear();
+    canvasDrawArc(tehPt.x, tehPt.y, rPx,
+      'rgba(192,57,43,0.5)', 5, 9, 1.2, circMs, null);
   }, circStart);
 
   // STEP 4: Fill fades in after ring finishes
@@ -1532,9 +1627,8 @@ function beatLineAT(cb){
   // cb fires simultaneously to start map pan during the fade
   const fadeAt = lineMs + 6200;
   setTimeout(()=>{
-    // Fade the line
-    lineEl.style.transition = 'opacity 1s ease';
-    lineEl.style.opacity = '0';
+    // Fade the canvas (line and arc)
+    canvasFade(1000);
     // Fade the distance label marker
     const labelEl = beatRef.labelAT ? beatRef.labelAT.getElement() : null;
     if(labelEl){ labelEl.style.transition = 'opacity 1s ease'; labelEl.style.opacity = '0'; }
@@ -1801,33 +1895,13 @@ function beatDateCounter(){
               setTimeout(()=>{
                 typingMarker(35.4,33.3,'AKROTIRI','rgba(224,112,48,0.9)','Hezbollah drone','rgba(224,112,48,0.75)');
               }, 800);
-              // Hezbollah base dot + animated line to Akrotiri Cyprus
+              // Hezbollah base dot + animated dotted line via Canvas
               setTimeout(()=>{
                 L.marker([33.5,35.5],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
                 const p1 = heroMap.latLngToContainerPoint([33.5,35.5]);
                 const p2 = heroMap.latLngToContainerPoint([34.6,32.97]);
-                let hsvg = document.getElementById('hez-line-svg');
-                if(!hsvg){
-                  hsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-                  hsvg.id = 'hez-line-svg';
-                  hsvg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-                  heroMap.getPanes().overlayPane.appendChild(hsvg);
-                }
-                const hLine = document.createElementNS('http://www.w3.org/2000/svg','line');
-                hLine.setAttribute('x1',p1.x); hLine.setAttribute('y1',p1.y);
-                hLine.setAttribute('x2',p2.x); hLine.setAttribute('y2',p2.y);
-                hLine.setAttribute('stroke','rgba(224,112,48,0.7)');
-                hLine.setAttribute('stroke-width','1');
-                hLine.setAttribute('pathLength','1');
-                hLine.style.strokeDasharray='1';
-                hLine.style.strokeDashoffset='1';
-                hsvg.appendChild(hLine);
-                setTimeout(()=>{
-                  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-                    hLine.style.transition='stroke-dashoffset 1400ms linear';
-                    hLine.style.strokeDashoffset='0';
-                  }));
-                },100);
+                canvasDrawLine(p1.x, p1.y, p2.x, p2.y,
+                  'rgba(224,112,48,0.75)', 5, 8, 2, 1400, null);
               }, 300);
             }
 
@@ -1837,29 +1911,8 @@ function beatDateCounter(){
             // Draw animated missile path from W.Iran to intercept point
             const tehPt = heroMap.latLngToContainerPoint([33.5,47.5]);
             const intPt = heroMap.latLngToContainerPoint([ev2.lat,ev2.lon]);
-            const mapEl = document.getElementById('hero-map-bg');
-            let msvg = document.getElementById('missile-path-svg');
-            if(!msvg){
-              msvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-              msvg.id='missile-path-svg';
-              msvg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-              heroMap.getPanes().overlayPane.appendChild(msvg);
-            }
-            const mLine=document.createElementNS('http://www.w3.org/2000/svg','line');
-            mLine.setAttribute('x1',tehPt.x); mLine.setAttribute('y1',tehPt.y);
-            mLine.setAttribute('x2',intPt.x); mLine.setAttribute('y2',intPt.y);
-            mLine.setAttribute('stroke','rgba(167,139,250,0.7)');
-            mLine.setAttribute('stroke-width','1');
-            mLine.setAttribute('pathLength','1');
-            mLine.style.strokeDasharray='1';
-            mLine.style.strokeDashoffset='1';
-            msvg.appendChild(mLine);
-            setTimeout(()=>{
-              requestAnimationFrame(()=>requestAnimationFrame(()=>{
-                mLine.style.transition='stroke-dashoffset 1200ms linear';
-                mLine.style.strokeDashoffset='0';
-              }));
-            },100);
+            canvasDrawLine(tehPt.x, tehPt.y, intPt.x, intPt.y,
+              'rgba(167,139,250,0.75)', 4, 7, 2, 1200, null);
             // Fade out missile path after 1.6s
 
             // First intercept only: slide in dist cell 1 (1,200 MI / Dörtyol)
