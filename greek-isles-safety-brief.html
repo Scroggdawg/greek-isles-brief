@@ -200,7 +200,7 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 
 /* Boat image */
 .boat-img-wrap{position:relative;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-top:16px}
-.boat-img-wrap img{width:100%;height:220px;object-fit:cover;display:block;filter:brightness(0.8) saturate(0.75)}
+.boat-img-wrap img{width:100%;height:100%;min-height:280px;object-fit:cover;display:block;filter:brightness(0.8) saturate(0.75)}
 .boat-img-overlay{position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to top,rgba(7,8,13,.9),transparent);font-family:'DM Mono',monospace;font-size:9px;color:var(--dim2);letter-spacing:.08em}
 
 /* ═══════════════════════════════
@@ -635,11 +635,11 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
       <!-- ROW 3: Two images — TEL truck + SM-3 launch -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="slide-up d3 io-watch">
         <div class="img-card">
-          <img src="https://military-informant.com/wp-content/uploads/2010/06/shahab3.jpg" alt="Iranian Shahab-3 ballistic missile on TEL truck during military parade" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.display='none'">
+          <img src="https://military-informant.com/wp-content/uploads/2010/06/shahab3.jpg" alt="Iranian Shahab-3 ballistic missile on TEL truck during military parade" loading="lazy" style="height:340px;width:100%;object-fit:contain;display:block;filter:brightness(0.75) saturate(0.7);background:#0a0b10" onerror="this.style.display='none'">
           <div class="img-cap"><strong>TEL Truck — Transporter Erector Launcher</strong><br>Iran fires ballistic missiles from trucks that drive out of underground "Missile City" networks, erect the missile, fire, and attempt to flee before being destroyed by US/Israeli strikes targeting the launchers.</div>
         </div>
         <div class="img-card">
-          <img src="https://www.seaforces.org/wpnsys/SURFACE/RIM-161_DAT/RIM-161-SM-3-008.jpg" alt="SM-3 Standard Missile launch from USS Lake Erie Aegis cruiser" loading="lazy" style="height:260px;width:100%;object-fit:cover;display:block;filter:brightness(0.75) saturate(0.7)" onerror="this.style.display='none'">
+          <img src="https://www.seaforces.org/wpnsys/SURFACE/RIM-161_DAT/RIM-161-SM-3-008.jpg" alt="SM-3 Standard Missile launch from USS Lake Erie Aegis cruiser" loading="lazy" style="height:340px;width:100%;object-fit:contain;display:block;filter:brightness(0.75) saturate(0.7);background:#0a0b10" onerror="this.style.display='none'">
           <div class="img-cap"><strong>SM-3 Launch — USS Oscar Austin (Arleigh Burke-class)</strong><br>The Standard Missile-3 interceptor launches from a vertical strike cell aboard the destroyer. Four fired, four kills. The Oscar Austin was operating in the Eastern Mediterranean between Cyprus and the Lebanese coast.</div>
         </div>
       </div>
@@ -706,8 +706,8 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
   <div class="card-body" id="cb-6">
     <div class="card-inner" id="ci-6">
       <div class="two-col">
-        <div>
-          <div class="slide-left d1 io-watch">
+        <div style="display:flex;flex-direction:column">
+          <div class="slide-left d1 io-watch" style="display:flex;flex-direction:column;flex:1">
             <div class="mono-label">Your vessel — Maiora 126</div>
             <div class="boat-bar">
               <div class="bb-cell"><div class="bb-num">29 kts</div><div class="bb-label">Top speed</div></div>
@@ -715,19 +715,19 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
               <div class="bb-cell"><div class="bb-num">1,500 nm</div><div class="bb-label">Range</div></div>
             </div>
             <p class="body-p" style="font-size:14px">Athens (Piraeus) → Santorini: ~130 nm = <strong>under 6 hours at cruise.</strong> You are on a private 38-meter vessel with a professional captain and crew. Not a public ferry. You are never stranded.</p>
-            <div class="boat-img-wrap slide-up d2 io-watch">
+            <div class="boat-img-wrap slide-up d2 io-watch" style="margin-top:16px;flex:1;min-height:300px">
               <img src="https://www.yachtscroatia.com/var/site/storage/images/_aliases/i1320/0/6/3/3/263360-18-eng-GB/606b5f429f59-00-Cynthia-main_.jpg.webp" alt="Superyacht in blue Mediterranean waters" loading="lazy">
               <div class="boat-img-overlay">M/Y Pareaki II · Maiora 126 · Twin MTU 3,700hp · 29 knots max</div>
             </div>
           </div>
-          <div class="slide-left d3 io-watch" style="margin-top:20px">
+        </div>
+        <div>
+          <div class="slide-right d1 io-watch" style="margin-bottom:20px">
             <div class="mono-label">If Poros 1988 concerns you</div>
             <div style="background:rgba(61,187,116,.04);border:1px solid rgba(61,187,116,.16);border-radius:2px;padding:14px 16px;font-size:13px;color:var(--dim2);line-height:1.8">
               The 1988 Poros attack targeted a <strong style="color:var(--white)">crowded public ferry</strong> with no security. You are on a <strong style="color:var(--white)">private charter with a professional crew, no public boarding, and the ability to depart any island in under 30 minutes.</strong> Categorically different.
             </div>
           </div>
-        </div>
-        <div>
           <div class="slide-right d2 io-watch">
             <div class="mono-label">Three-step extraction</div>
             <div class="route-trio" style="grid-template-columns:1fr">
