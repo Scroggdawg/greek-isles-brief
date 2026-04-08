@@ -1098,7 +1098,7 @@ function getHeroCanvas() {
   if (c) return c;
   c = document.createElement('canvas');
   c.id = 'hero-canvas-overlay';
-  c.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;';
+  c.style.cssText = 'position:fixed;pointer-events:none;z-index:450;';
   document.body.appendChild(c);
   function sizeCanvas() {
     var mapEl = document.getElementById('hero-map-bg');
@@ -1114,6 +1114,7 @@ function getHeroCanvas() {
   }
   sizeCanvas();
   window.addEventListener('resize', sizeCanvas);
+  window.addEventListener('scroll', sizeCanvas, { passive: true });
   return c;
 }
 
@@ -1135,6 +1136,21 @@ function _canvasRedraw() {
       ctx.beginPath();
       ctx.moveTo(d.x1, d.y1);
       ctx.lineTo(ex, ey);
+      ctx.strokeStyle = d.color;
+      ctx.lineWidth = d.widthPx;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([d.dotPx, d.gapPx]);
+      ctx.stroke();
+    } else if (entry.type === 'lineLL') {
+      // Geo-anchored line: recompute pixel coords every frame from live map state
+      if (typeof heroMap === 'undefined' || !heroMap) { ctx.restore(); return; }
+      var p1 = heroMap.latLngToContainerPoint([d.lat1, d.lng1]);
+      var p2 = heroMap.latLngToContainerPoint([d.lat2, d.lng2]);
+      var llx = p1.x + (p2.x - p1.x) * entry.prog;
+      var lly = p1.y + (p2.y - p1.y) * entry.prog;
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(llx, lly);
       ctx.strokeStyle = d.color;
       ctx.lineWidth = d.widthPx;
       ctx.lineCap = 'round';
@@ -1188,6 +1204,32 @@ function canvasDrawLine(x1, y1, x2, y2, color, dotPx, gapPx, widthPx, drawMs, on
   var entry = {
     type: 'line',
     data: { x1: x1, y1: y1, x2: x2, y2: y2, color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx },
+    prog: 0,
+    drawMs: drawMs,
+    startT: performance.now(),
+    onDone: onDone,
+    cancelled: false
+  };
+  window._canvasRegistry.push(entry);
+  if (!window._canvasRafId) {
+    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
+  }
+  return function() { entry.cancelled = true; };
+}
+
+// Draw a geo-anchored line from [lat1,lng1] to [lat2,lng2] over drawMs ms.
+// Pixel positions are recomputed every rAF frame from the live map state,
+// so the line stays locked to geography during pans, zooms, and page scroll.
+// Returns a cancel function.
+function canvasDrawLineLL(lat1, lng1, lat2, lng2, color, dotPx, gapPx, widthPx, drawMs, onDone) {
+  getHeroCanvas();
+  window._canvasStopped = false;
+  var entry = {
+    type: 'lineLL',
+    data: {
+      lat1: lat1, lng1: lng1, lat2: lat2, lng2: lng2,
+      color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx
+    },
     prog: 0,
     drawMs: drawMs,
     startT: performance.now(),
@@ -1609,7 +1651,7 @@ function beatLineAT(cb){
   // STEP 1: Draw Tehran→Athens line via Canvas
   var cancelATLine = null;
   setTimeout(()=>{
-    cancelATLine = canvasDrawLine(tehPt.x, tehPt.y, athPt.x, athPt.y,
+    cancelATLine = canvasDrawLineLL(35.7, 51.4, 37.97, 23.7,
       'rgba(192,57,43,0.7)', 0, 0, 1.5, lineMs, null);
   }, 100);
 
@@ -1957,7 +1999,7 @@ function beatDateCounter(){
                 L.marker([33.5,35.5],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
                 const p1 = heroMap.latLngToContainerPoint([33.5,35.5]);
                 const p2 = heroMap.latLngToContainerPoint([34.6,32.97]);
-                canvasDrawLine(p1.x, p1.y, p2.x, p2.y,
+                canvasDrawLineLL(33.5, 35.5, 34.6, 32.97,
                   'rgba(224,112,48,0.75)', 5, 8, 2, 1400, null);
               }, 300);
             }
@@ -1977,8 +2019,8 @@ function beatDateCounter(){
             var shipMs   = Math.round(missileMs * (dShip / dMissile));
             var shipDelay = missileMs - shipMs;
 
-            // Purple dotted missile line — stays persistent
-            canvasDrawLine(tehPt.x, tehPt.y, intPt.x, intPt.y,
+            // Purple dotted missile line — stays persistent, geo-anchored
+            canvasDrawLineLL(33.5, 47.5, ev2.lat, ev2.lon,
               'rgba(167,139,250,0.75)', 4, 7, 2, missileMs, null);
 
             // First intercept only: origin dot, Oscar Austin dot, dist cell, typing marker
@@ -1993,10 +2035,13 @@ function beatDateCounter(){
             }
 
             // Red solid intercept line fires after delay, arrives simultaneously with missile
-            setTimeout(function(){
-              canvasDrawLine(oscarPt.x, oscarPt.y, intPt.x, intPt.y,
-                'rgba(192,57,43,0.85)', 0, 0, 2, shipMs, null);
-            }, shipDelay);
+            // Capture ev2.lat/lon in closure for geo-anchored redraw
+            (function(iLat, iLon, sMs) {
+              setTimeout(function(){
+                canvasDrawLineLL(34.5, 33.8, iLat, iLon,
+                  'rgba(192,57,43,0.85)', 0, 0, 2, sMs, null);
+              }, shipDelay);
+            })(ev2.lat, ev2.lon, shipMs);
           }
         },i*300);
       });
