@@ -1105,12 +1105,24 @@ function getHeroCanvas() {
     if (!mapEl) return;
     var rect = mapEl.getBoundingClientRect();
     var dpr = window.devicePixelRatio;
-    c.width  = Math.round(rect.width  * dpr);
-    c.height = Math.round(rect.height * dpr);
+    var newW = Math.round(rect.width  * dpr);
+    var newH = Math.round(rect.height * dpr);
+    // Only assign width/height if they actually changed — assigning to canvas.width
+    // clears the pixel buffer even when the value is identical (browser spec).
+    // On scroll, only top/left change; width/height are stable. Guard prevents flicker.
+    var dimsChanged = (newW !== c.width || newH !== c.height);
+    if (dimsChanged) {
+      c.width  = newW;
+      c.height = newH;
+    }
     c.style.width  = rect.width  + 'px';
     c.style.height = rect.height + 'px';
     c.style.top    = rect.top    + 'px';
     c.style.left   = rect.left   + 'px';
+    // If a real resize cleared the canvas, repaint the registry immediately.
+    if (dimsChanged && window._canvasRegistry && window._canvasRegistry.length > 0 && !window._canvasRafId) {
+      window._canvasRafId = requestAnimationFrame(_canvasTickAll);
+    }
   }
   sizeCanvas();
   window.addEventListener('resize', sizeCanvas);
@@ -1698,8 +1710,10 @@ function beatLineAT(cb){
   const circStart = lineMs + 2300;
   var cancelArc = null;
   setTimeout(()=>{
-    if (cancelATLine) { cancelATLine(); cancelATLine = null; }
-    canvasClear();
+    // Do NOT cancel the Tehran→Athens line here — let it persist alongside the arc
+    // until STEP 5 at fadeAt (7600ms) when the map reposition begins.
+    // Do NOT canvasClear() — it would wipe the line from the registry.
+    // The arc entry is simply added to the existing registry.
     cancelArc = canvasDrawArc(
       function() {
         var t = heroMap.latLngToContainerPoint([35.7, 51.4]);
