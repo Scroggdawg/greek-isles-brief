@@ -1089,44 +1089,39 @@ window._canvasRafId = null;
 window._canvasStopped = false;
 
 function getHeroCanvas() {
+  var mapEl = document.getElementById('hero-map-bg');
+  if (!mapEl) return null;
   var c = document.getElementById('hero-canvas-overlay');
-  // Evict stale canvas if it's not on body with position:fixed
-  if (c && (c.parentElement !== document.body || c.style.position !== 'fixed')) {
+  // Evict stale canvas if it's not inside hero-map-bg with position:absolute
+  if (c && (c.parentElement !== mapEl || c.style.position !== 'absolute')) {
     c.remove();
     c = null;
   }
   if (c) return c;
   c = document.createElement('canvas');
   c.id = 'hero-canvas-overlay';
-  c.style.cssText = 'position:fixed;pointer-events:none;z-index:450;';
-  document.body.appendChild(c);
+  // position:absolute inside hero-map-bg — CSS keeps it perfectly aligned
+  // through all page scrolling with zero frame gap. No scroll listener needed.
+  c.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:450;';
+  mapEl.appendChild(c);
   function sizeCanvas() {
-    var mapEl = document.getElementById('hero-map-bg');
-    if (!mapEl) return;
-    var rect = mapEl.getBoundingClientRect();
     var dpr = window.devicePixelRatio;
-    var newW = Math.round(rect.width  * dpr);
-    var newH = Math.round(rect.height * dpr);
-    // Only assign width/height if they actually changed — assigning to canvas.width
-    // clears the pixel buffer even when the value is identical (browser spec).
-    // On scroll, only top/left change; width/height are stable. Guard prevents flicker.
+    var newW = Math.round(mapEl.offsetWidth  * dpr);
+    var newH = Math.round(mapEl.offsetHeight * dpr);
+    // Guard: only assign if changed — canvas.width assignment clears the pixel buffer.
     var dimsChanged = (newW !== c.width || newH !== c.height);
     if (dimsChanged) {
       c.width  = newW;
       c.height = newH;
     }
-    c.style.width  = rect.width  + 'px';
-    c.style.height = rect.height + 'px';
-    c.style.top    = rect.top    + 'px';
-    c.style.left   = rect.left   + 'px';
-    // If a real resize cleared the canvas, repaint the registry immediately.
+    // If resize cleared the canvas, repaint immediately.
     if (dimsChanged && window._canvasRegistry && window._canvasRegistry.length > 0 && !window._canvasRafId) {
       window._canvasRafId = requestAnimationFrame(_canvasTickAll);
     }
   }
   sizeCanvas();
   window.addEventListener('resize', sizeCanvas);
-  window.addEventListener('scroll', sizeCanvas, { passive: true });
+  // No scroll listener — CSS position handles alignment automatically.
   return c;
 }
 
