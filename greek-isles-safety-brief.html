@@ -228,11 +228,11 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 /* ═══════════════════════════════
    STATS
 ═══════════════════════════════ */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
 @media(max-width:700px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 .sg-cell{background:var(--bg3);padding:20px 16px}
-.sg-num{font-size:36px;font-weight:300;line-height:1;margin-bottom:4px}
-.sg-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;line-height:1.4}
+.sg-num{font-size:48px;font-weight:300;line-height:1;margin-bottom:4px}
+.sg-label{font-family:'DM Mono',monospace;font-size:14px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;line-height:1.4}
 
 /* ═══════════════════════════════
    TIMELINE
@@ -611,10 +611,12 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
         <!-- RIGHT: Stat grid + Under 10 min -->
         <div style="display:flex;flex-direction:column;gap:16px">
           <div class="stat-grid" style="margin:0">
-            <div class="sg-cell"><div class="sg-num" style="color:var(--red)">4</div><div class="sg-label">Missiles fired toward Turkey</div></div>
-            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">4</div><div class="sg-label">Intercepted by NATO</div></div>
-            <div class="sg-cell"><div class="sg-num" style="color:var(--purple)">&lt;10</div><div class="sg-label">Minutes per intercept</div></div>
-            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes near Greece</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--gold)">1</div><div class="sg-label">Greece Travel Advisory — Level 1, unchanged through 35+ days of active conflict</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">NATO</div><div class="sg-label">Greece holds no significant US military assets — among the safest destinations in Europe</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes outside the Middle East — Iran has not struck any target beyond the region</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--red)">930 mi</div><div class="sg-label">Iran's furthest confirmed hit — Athens is 1,530 mi away, 600 mi beyond Iran's proven reach</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--blue)">4/4</div><div class="sg-label">NATO intercepts — every missile that crossed into allied airspace was destroyed, 0 reached soil</div></div>
+            <div class="sg-cell"><div class="sg-num" style="color:var(--gold)">27</div><div class="sg-label">International airports within a day's sail — multiple evacuation routes available at all times</div></div>
           </div>
           <div style="background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.18);border-radius:2px;padding:20px 22px">
             <div style="font-size:clamp(18px,2vw,24px);font-weight:300;color:var(--purple);margin-bottom:14px;line-height:1.1">Under 10 minutes, <em style="font-style:italic">radar to impact.</em></div>
