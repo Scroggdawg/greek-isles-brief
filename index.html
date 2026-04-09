@@ -12,6 +12,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -332,6 +335,10 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 /* IO fallback */
 .io-watch{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
 .io-watch.vis{opacity:1;transform:translateY(0)}
+
+.map-label-main{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--white);text-shadow:0 1px 3px rgba(0,0,0,0.8);white-space:nowrap}
+.map-label-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim2);text-shadow:0 1px 3px rgba(0,0,0,0.8);white-space:nowrap}
+.dc-line{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.04em;padding:1px 0;line-height:1.5}
 </style>
 
 
@@ -343,6 +350,23 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 <!-- ═══════════ HERO ═══════════ -->
 <section id="hero">
   <div id="hero-map-bg"></div>
+  <!-- v3 Mapbox GL label overlays — positioned by Marker API -->
+  <div id="athens-marker-label" style="display:none;position:absolute;pointer-events:none;opacity:0;transition:opacity 0.6s ease">
+    <div class="map-label-main">ATHENS</div>
+    <div class="map-label-sub">LEVEL 1 · UNCHANGED</div>
+  </div>
+  <div id="tehran-marker-label" style="display:none;position:absolute;pointer-events:none;opacity:0;transition:opacity 0.6s ease">
+    <div class="map-label-main">TEHRAN</div>
+    <div class="map-label-sub">~1,530 MI FROM ATHENS</div>
+  </div>
+  <div id="akrotiri-marker-label" style="display:none;position:absolute;pointer-events:none;opacity:0;transition:opacity 0.6s ease">
+    <div class="map-label-main">AKROTIRI</div>
+    <div class="map-label-sub">HEZBOLLAH DRONE</div>
+  </div>
+  <div id="oscar-austin-label" style="display:none;position:absolute;pointer-events:none;opacity:0;transition:opacity 0.6s ease">
+    <div class="map-label-main">USS OSCAR AUSTIN</div>
+    <div class="map-label-sub">SM-3 · EASTERN MED</div>
+  </div>
   <div class="hero-vignette"></div>
 
   <!-- Date counter: top right, Beat 10+ -->
@@ -1028,1086 +1052,287 @@ function dotIcon(color, sz) {
   return L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
     html:`<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:50%"></div>`});
 }
-function typingMarker(lat, lon, text, color, sub, subColor) {
-    const sid = v => String(v).replace('.','_');
-    const mainId = `tm-main-${sid(lat)}-${sid(lon)}`;
-    const subId  = `tm-sub-${sid(lat)}-${sid(lon)}`;
-    const html = `<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 12px ${color}66;line-height:1.5">
-      <span id="${mainId}"></span>${sub?`<br><span id="${subId}" style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'};opacity:0;transition:opacity 0.4s ease">${sub}</span>`:''}
-    </div>`;
-    const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],html});
-    const marker = L.marker([lat,lon],{icon}).addTo(heroMap);
-    setTimeout(()=>{
-      const el = marker.getElement();
-      if(!el) return;
-      const mainSpan = el.querySelector(`#${mainId}`);
-      const subSpan  = el.querySelector(`#${subId}`);
-      if(mainSpan){
-        let i=0;
-        const iv=setInterval(()=>{
-          if(i<text.length){ mainSpan.textContent+=text[i++]; }
-          else {
-            clearInterval(iv);
-            if(subSpan) setTimeout(()=>{ subSpan.style.opacity='1'; },300);
-          }
-        },55);
-      }
-    },100);
-    return marker;
-  }
-
 function lbl(text, color, sub, subColor) {
   return L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],
     html:`<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;color:${color};text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810,0 0 10px #060810">${text}${sub?`<br><span style="font-size:8px;color:${subColor||'rgba(255,255,255,.28)'}">${sub}</span>`:''}</div>`});
 }
 
-// ═══════════════════════════════════════
-// HERO ORCHESTRATOR — Beats 1-12
-// All geometry is Leaflet-native (no SVG overlay)
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// HERO MAP — Mapbox GL v3
+// ═══════════════════════════════════════════════════════
 
-const heroEvents = [
-  {d:'Feb 28',s:'Operation Epic Fury — ~900 strikes. Khamenei killed.',cl:'eb',lat:35.7,lon:51.4,r:500000,ic:false},
-  {d:'Mar 1', s:'Tanker Skylight struck — 2 killed, Strait of Hormuz',cl:'er',lat:25.3,lon:56.4,r:170000,ic:false},
-  {d:'Mar 3', s:'Hezbollah drone strikes RAF Akrotiri, Cyprus',cl:'eo',lat:34.6,lon:32.97,r:160000,ic:false},
-  {d:'Mar 4', s:'NATO intercept #1 — missile destroyed over Turkey',cl:'ep',lat:36.8,lon:36.2,r:175000,ic:true},
-  {d:'Mar 5', s:'Iran: 500+ missiles, 2,000+ drones — all Gulf/Israel',cl:'er',lat:26,lon:51,r:380000,ic:false},
-  {d:'Mar 7', s:'Israeli strikes on Tehran oil depots',cl:'eb',lat:35.7,lon:51.4,r:250000,ic:false},
-  {d:'Mar 8', s:'Brent crude over $100. Hormuz traffic down 70%.',cl:'ed',lat:27,lon:50,r:110000,ic:false},
-  {d:'Mar 9', s:'NATO intercept #2 over Turkish airspace',cl:'ep',lat:36.8,lon:36.8,r:170000,ic:true},
-  {d:'Mar 12',s:'21 confirmed tanker attacks in Strait of Hormuz',cl:'er',lat:25,lon:56.5,r:230000,ic:false},
-  {d:'Mar 13',s:'US strikes Kharg Island — Iran main oil hub',cl:'eb',lat:29.2,lon:50.3,r:230000,ic:false},
-  {d:'Mar 13',s:'NATO intercept #3 — near Incirlik Air Base',cl:'ep',lat:37.0,lon:35.4,r:170000,ic:true},
-  {d:'Mar 22',s:'Wave of US/Israeli strikes on Tehran',cl:'eb',lat:35.7,lon:51.4,r:320000,ic:false},
-  {d:'Mar 25',s:'Greece Level 1 reconfirmed — 25 days of war',cl:'eg',lat:37.97,lon:23.7,r:170000,ic:false},
-  {d:'Mar 28',s:'Iran strikes Prince Sultan AB, Saudi — 29 injured',cl:'er',lat:24.9,lon:46.7,r:200000,ic:false},
-  {d:'Mar 28',s:'UAE: 414 missiles and 1,914 drones since Feb 28',cl:'ed',lat:24.5,lon:54.4,r:130000,ic:false},
-  {d:'Mar 30',s:'NATO intercept #4 — Dörtyol, Turkey',cl:'ep',lat:36.8,lon:36.2,r:175000,ic:true},
-  {d:'Apr 5', s:'Greece Level 1 confirmed — 35 days of conflict.',cl:'eg',lat:37.97,lon:23.7,r:170000,ic:false},
+mapboxgl.accessToken = 'pk.eyJ1Ijoic2Nyb2dnZGF3ZyIsImEiOiJjbW5yc29lMjUwNjV4MnJxM2xoN2h5d2gwIn0.iHZJEVGCFq7vrvtT43EAUg';
+
+// All coordinates are [longitude, latitude] — Mapbox GL order (opposite of Leaflet)
+const TEHRAN   = [51.4,  35.7];
+const ATHENS   = [23.7,  37.97];
+const DORTYOL  = [36.2,  36.8];
+const AKROTIRI = [32.97, 34.6];
+const OSCAR    = [33.8,  34.5];  // USS Oscar Austin — Eastern Med
+
+// ── Hero events — heat map source data ──
+// Add new events here. Heat map updates automatically.
+const heroEvents = {
+  type: 'FeatureCollection',
+  features: [
+    {type:'Feature',geometry:{type:'Point',coordinates:[51.4,35.7]},  properties:{w:5,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[52.0,35.7]},  properties:{w:3,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[48.8,33.7]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[56.4,25.3]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[52.1,35.2]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[49.9,34.0]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[59.6,36.3]},  properties:{w:1,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[51.7,32.6]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[48.7,31.3]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[50.5,35.8]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[48.5,34.8]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[47.5,33.5]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[51.0,26.0]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[50.6,26.2]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[54.3,24.5]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[35.2,31.8]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[34.8,31.0]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[50.0,27.0]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[46.7,24.9]},  properties:{w:1,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[54.4,24.5]},  properties:{w:2,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[56.5,25.0]},  properties:{w:1,t:'strike',color:'#c0392b'}},
+    {type:'Feature',geometry:{type:'Point',coordinates:[50.3,29.2]},  properties:{w:1,t:'strike',color:'#c0392b'}},
+  ]
+};
+
+// ── Timeline entries ──
+// Add new events here. Date counter and live dots both read from this array.
+// dots: array of {c:[lng,lat], color:'#hex', r:radius_px}
+// final:true marks the last entry — triggers the post-counter finale
+const timelineEntries = [
+  {date:'Feb 28', text:'Operation Epic Fury — ~900 strikes. Khamenei killed.',
+    dots:[{c:TEHRAN,color:'#c0392b',r:8}]},
+  {date:'Mar 1',  text:'Tanker Skylight struck — 2 killed, Strait of Hormuz',
+    dots:[{c:[56.1,26.5],color:'#c0392b',r:6}]},
+  {date:'Mar 2',  text:'', dots:[]},
+  {date:'Mar 3',  text:'Hezbollah drone strikes RAF Akrotiri, Cyprus',
+    dots:[{c:AKROTIRI,color:'#e07030',r:6}]},
+  {date:'Mar 4',  text:'NATO intercept #1 — missile destroyed over Turkey',
+    dots:[{c:DORTYOL,color:'#5aa0e8',r:6},{c:OSCAR,color:'#5aa0e8',r:5,label:'oscar'}]},
+  {date:'Mar 5',  text:'Iran: 500+ missiles, 2,000+ drones — all Gulf/Israel',
+    dots:[{c:[47.0,26.0],color:'#c0392b',r:7},{c:[35.0,32.0],color:'#c0392b',r:6}]},
+  {date:'Mar 6',  text:'', dots:[]},
+  {date:'Mar 7',  text:'Israeli strikes on Tehran oil depots',
+    dots:[{c:[51.5,35.6],color:'#5aa0e8',r:5}]},
+  {date:'Mar 8',  text:'Brent crude over $100. Hormuz traffic down 70%.', dots:[]},
+  {date:'Mar 9',  text:'NATO intercept #2 over Turkish airspace',
+    dots:[{c:[36.5,38.0],color:'#5aa0e8',r:6}]},
+  {date:'Mar 10', text:'', dots:[]},
+  {date:'Mar 11', text:'', dots:[]},
+  {date:'Mar 12', text:'21 confirmed tanker attacks in Strait of Hormuz',
+    dots:[{c:[56.3,26.0],color:'#c0392b',r:7}]},
+  {date:'Mar 13', text:'US strikes Kharg Island — Iran main oil hub',
+    dots:[{c:[50.3,29.2],color:'#5aa0e8',r:6}]},
+  {date:'Mar 13', text:'NATO intercept #3 — near Incirlik Air Base',
+    dots:[{c:[35.4,37.0],color:'#5aa0e8',r:6}]},
+  {date:'Mar 14', text:'', dots:[]},
+  {date:'Mar 15', text:'', dots:[]},
+  {date:'Mar 16', text:'', dots:[]},
+  {date:'Mar 17', text:'', dots:[]},
+  {date:'Mar 18', text:'', dots:[]},
+  {date:'Mar 19', text:'', dots:[]},
+  {date:'Mar 20', text:'', dots:[]},
+  {date:'Mar 21', text:'', dots:[]},
+  {date:'Mar 22', text:'Wave of US/Israeli strikes on Tehran',
+    dots:[{c:[51.4,35.8],color:'#5aa0e8',r:7}]},
+  {date:'Mar 23', text:'', dots:[]},
+  {date:'Mar 24', text:'', dots:[]},
+  {date:'Mar 25', text:'Greece Level 1 reconfirmed — 25 days of war', dots:[]},
+  {date:'Mar 26', text:'', dots:[]},
+  {date:'Mar 27', text:'', dots:[]},
+  {date:'Mar 28', text:'Iran strikes Prince Sultan AB, Saudi — 29 injured',
+    dots:[{c:[46.7,24.9],color:'#c0392b',r:6}]},
+  {date:'Mar 29', text:'', dots:[]},
+  {date:'Mar 28', text:'UAE: 414 missiles and 1,914 drones since Feb 28', dots:[]},
+  {date:'Mar 30', text:'NATO intercept #4 — Dörtyol, Turkey',
+    dots:[{c:DORTYOL,color:'#5aa0e8',r:6}]},
+  {date:'Apr 1',  text:'', dots:[]},
+  {date:'Apr 2',  text:'', dots:[]},
+  {date:'Apr 3',  text:'', dots:[]},
+  {date:'Apr 4',  text:'', dots:[]},
+  {date:'Apr 5',  text:'Greece Level 1 confirmed — 35 days of conflict.',
+    dots:[], final:true},
 ];
 
-let heroMap;
-const heroLayers = [];          // all layers added during beats 3-8
-const beatRef = {};             // named refs for cross-beat fading
+// ── Map initialization ──
+const heroMap = new mapboxgl.Map({
+  container: 'hero-map-bg',
+  style: 'mapbox://styles/mapbox/dark-v11',
+  center: [38, 33],
+  zoom: 5.15,
+  minZoom: 4,
+  maxZoom: 8,
+  interactive: false,
+  attributionControl: false
+});
+heroMap.addControl(new mapboxgl.AttributionControl({compact:true}), 'bottom-right');
+heroMap.on('load', heroMapReady);
 
-// ── Canvas overlay for animated dotted lines ──
-// position:fixed on body escapes all stacking contexts and overflow:hidden containers.
-// Shared rAF loop + draw registry — concurrent lines never erase each other.
-// Geo-anchored arc: getCenter() called every frame, arc stays locked during flyTo pans.
-// _canvasStopped flag: canvasClear() kills any in-flight rAF on its next tick.
+// ── Layer setup — runs once on map load ──
+function heroMapReady() {
 
-window._canvasRegistry = [];
-window._canvasRafId = null;
-window._canvasStopped = false;
+  // Make the map container visible (CSS starts at opacity:0, .map-ready fades to 1)
+  document.getElementById('hero-map-bg').classList.add('map-ready');
 
-function getHeroCanvas() {
-  var mapEl = document.getElementById('hero-map-bg');
-  if (!mapEl) return null;
-  var c = document.getElementById('hero-canvas-overlay');
-  // Evict stale canvas if it's not in the correct pane with position:absolute
-  var expectedParent = mapEl.querySelector('.leaflet-map-pane') || mapEl;
-  if (c && (c.parentElement !== expectedParent || c.style.position !== 'absolute')) {
-    c.remove();
-    c = null;
-  }
-  if (c) return c;
-  c = document.createElement('canvas');
-  c.id = 'hero-canvas-overlay';
-  // position:absolute inside .leaflet-map-pane at z-index:450.
-  // Inside mapPane's stacking context: tilePane(200) < overlayPane(400) < canvas(450) < markerPane(600).
-  // Lines are above tiles and fill circle, below dots and labels — correct visual order.
-  // mapPane is 0x0 with overflow:visible; we size the canvas from mapEl dimensions.
-  var paneEl = mapEl.querySelector('.leaflet-map-pane') || mapEl;
-  c.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:450;';
-  paneEl.appendChild(c);
-  function sizeCanvas() {
-    var dpr = window.devicePixelRatio;
-    var newW = Math.round(mapEl.offsetWidth  * dpr);
-    var newH = Math.round(mapEl.offsetHeight * dpr);
-    // Guard: only assign if changed — canvas.width assignment clears the pixel buffer.
-    var dimsChanged = (newW !== c.width || newH !== c.height);
-    if (dimsChanged) {
-      c.width  = newW;
-      c.height = newH;
-      c.style.width  = mapEl.offsetWidth  + 'px';
-      c.style.height = mapEl.offsetHeight + 'px';
-    }
-    // If resize cleared the canvas, repaint immediately.
-    if (dimsChanged && window._canvasRegistry && window._canvasRegistry.length > 0 && !window._canvasRafId) {
-      window._canvasRafId = requestAnimationFrame(_canvasTickAll);
-    }
-  }
-  sizeCanvas();
-  window.addEventListener('resize', sizeCanvas);
-  // No scroll listener — CSS position handles alignment automatically.
-  return c;
-}
-
-function _canvasRedraw() {
-  if (window._canvasStopped) return;
-  var c = document.getElementById('hero-canvas-overlay');
-  if (!c) return;
-  var ctx = c.getContext('2d');
-  var dpr = window.devicePixelRatio;
-  ctx.clearRect(0, 0, c.width, c.height);
-  window._canvasRegistry.forEach(function(entry) {
-    if (entry.cancelled) return;
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    var d = entry.data;
-    if (entry.type === 'line') {
-      var ex = d.x1 + (d.x2 - d.x1) * entry.prog;
-      var ey = d.y1 + (d.y2 - d.y1) * entry.prog;
-      ctx.beginPath();
-      ctx.moveTo(d.x1, d.y1);
-      ctx.lineTo(ex, ey);
-      ctx.strokeStyle = d.color;
-      ctx.lineWidth = d.widthPx;
-      ctx.lineCap = 'round';
-      ctx.setLineDash([d.dotPx, d.gapPx]);
-      ctx.stroke();
-    } else if (entry.type === 'lineLL') {
-      // Geo-anchored line: recompute pixel coords every frame from live map state
-      if (typeof heroMap === 'undefined' || !heroMap) { ctx.restore(); return; }
-      var p1 = heroMap.latLngToContainerPoint([d.lat1, d.lng1]);
-      var p2 = heroMap.latLngToContainerPoint([d.lat2, d.lng2]);
-      var llx = p1.x + (p2.x - p1.x) * entry.prog;
-      var lly = p1.y + (p2.y - p1.y) * entry.prog;
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(llx, lly);
-      ctx.strokeStyle = d.color;
-      ctx.lineWidth = d.widthPx;
-      ctx.lineCap = 'round';
-      ctx.setLineDash([d.dotPx, d.gapPx]);
-      ctx.stroke();
-    } else if (entry.type === 'arc') {
-      var center = d.getCenter();
-      var endAngle = (-Math.PI / 2) + Math.PI * 2 * entry.prog;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, center.r, -Math.PI / 2, endAngle);
-      ctx.strokeStyle = d.color;
-      ctx.lineWidth = d.widthPx;
-      ctx.lineCap = 'round';
-      ctx.setLineDash([d.dotPx, d.gapPx]);
-      ctx.stroke();
-    }
-    ctx.restore();
-  });
-  // Keep completed (prog=1) entries — only remove explicitly cancelled ones
-  // This keeps persistent lines visible after they finish drawing
-  window._canvasRegistry = window._canvasRegistry.filter(function(e) {
-    return !e.cancelled;
-  });
-  // Only keep rAF running if entries are still animating
-  var stillAnimating = window._canvasRegistry.some(function(e) { return e.prog < 1; });
-  if (stillAnimating) {
-    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
-  } else {
-    window._canvasRafId = null;
-  }
-}
-
-function _canvasTickAll(now) {
-  if (window._canvasStopped) return;
-  window._canvasRegistry.forEach(function(entry) {
-    if (entry.cancelled) return;
-    entry.prog = Math.min((now - entry.startT) / entry.drawMs, 1);
-    if (entry.prog >= 1 && entry.onDone) {
-      entry.onDone();
-      entry.onDone = null;
+  // Heat map source and layer
+  heroMap.addSource('events', {type:'geojson', data:heroEvents});
+  heroMap.addLayer({
+    id:'heat', type:'heatmap', source:'events',
+    paint:{
+      'heatmap-weight':       ['get','w'],
+      'heatmap-intensity':    1.2,
+      'heatmap-radius':       35,
+      'heatmap-opacity':      0,
+      'heatmap-opacity-transition': {duration:1200, delay:0},
+      'heatmap-color': ['interpolate',['linear'],['heatmap-density'],
+        0,   'rgba(0,0,0,0)',
+        0.2, 'rgba(192,57,43,0.1)',
+        0.5, 'rgba(192,57,43,0.4)',
+        0.8, 'rgba(192,57,43,0.7)',
+        1,   'rgba(192,57,43,0.9)'
+      ]
     }
   });
-  _canvasRedraw();
-}
 
-// Draw a dotted line from (x1,y1) to (x2,y2) over drawMs ms.
-// All values in CSS pixels. Returns a cancel function.
-function canvasDrawLine(x1, y1, x2, y2, color, dotPx, gapPx, widthPx, drawMs, onDone) {
-  getHeroCanvas();
-  window._canvasStopped = false;
-  var entry = {
-    type: 'line',
-    data: { x1: x1, y1: y1, x2: x2, y2: y2, color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx },
-    prog: 0,
-    drawMs: drawMs,
-    startT: performance.now(),
-    onDone: onDone,
-    cancelled: false
-  };
-  window._canvasRegistry.push(entry);
-  if (!window._canvasRafId) {
-    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
-  }
-  return function() { entry.cancelled = true; };
-}
-
-// Draw a geo-anchored line from [lat1,lng1] to [lat2,lng2] over drawMs ms.
-// Pixel positions are recomputed every rAF frame from the live map state,
-// so the line stays locked to geography during pans, zooms, and page scroll.
-// Returns a cancel function.
-function canvasDrawLineLL(lat1, lng1, lat2, lng2, color, dotPx, gapPx, widthPx, drawMs, onDone) {
-  getHeroCanvas();
-  window._canvasStopped = false;
-  var entry = {
-    type: 'lineLL',
-    data: {
-      lat1: lat1, lng1: lng1, lat2: lat2, lng2: lng2,
-      color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx
-    },
-    prog: 0,
-    drawMs: drawMs,
-    startT: performance.now(),
-    onDone: onDone,
-    cancelled: false
-  };
-  window._canvasRegistry.push(entry);
-  if (!window._canvasRafId) {
-    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
-  }
-  return function() { entry.cancelled = true; };
-}
-
-// Draw a geo-anchored arc ring over drawMs ms.
-// getCenter: function() returning { x, y, r } in CSS pixels — called every frame.
-// Passing a live function (not static coords) keeps the arc locked during map pans.
-// Returns a cancel function.
-function canvasDrawArc(getCenter, color, dotPx, gapPx, widthPx, drawMs, onDone) {
-  getHeroCanvas();
-  window._canvasStopped = false;
-  var entry = {
-    type: 'arc',
-    data: { getCenter: getCenter, color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx },
-    prog: 0,
-    drawMs: drawMs,
-    startT: performance.now(),
-    onDone: onDone,
-    cancelled: false
-  };
-  window._canvasRegistry.push(entry);
-  if (!window._canvasRafId) {
-    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
-  }
-  return function() { entry.cancelled = true; };
-}
-
-// Fade out the canvas element over fadeMs ms, then clear.
-// Call canvasClear() first if you need to stop active draws before fading.
-function canvasFade(fadeMs) {
-  var c = document.getElementById('hero-canvas-overlay');
-  if (!c) return;
-  var startT = performance.now();
-  function frame(now) {
-    var prog = Math.min((now - startT) / fadeMs, 1);
-    c.style.opacity = String(1 - prog);
-    if (prog < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      c.getContext('2d').clearRect(0, 0, c.width, c.height);
-      c.style.opacity = '1';
+  // Tehran → Athens line
+  heroMap.addSource('line-ta', {type:'geojson',
+    data:{type:'Feature', geometry:{type:'LineString', coordinates:[TEHRAN, ATHENS]}}
+  });
+  heroMap.addLayer({
+    id:'line-ta', type:'line', source:'line-ta',
+    paint:{
+      'line-color':   'rgba(192,57,43,0.7)',
+      'line-width':   1,
+      'line-opacity': 0,
+      'line-opacity-transition': {duration:1400, delay:0}
     }
-  }
-  requestAnimationFrame(frame);
-}
+  });
 
-// Stop all active draws and clear the canvas immediately.
-function canvasClear() {
-  window._canvasStopped = true;
-  window._canvasRegistry = [];
-  if (window._canvasRafId) {
-    cancelAnimationFrame(window._canvasRafId);
-    window._canvasRafId = null;
-  }
-  var c = document.getElementById('hero-canvas-overlay');
-  if (!c) return;
-  c.getContext('2d').clearRect(0, 0, c.width, c.height);
-}
-
-// ── Leaflet animation helpers ──
-
-function animateLine(coords, opts, drawMs) {
-  const line = L.polyline(coords, opts).addTo(heroMap);
-  heroLayers.push(line);
-  setTimeout(() => {
-    const path = line.getElement();
-    if (!path) return;
-    // visibility:hidden suppresses all painting — no flash possible
-    path.style.visibility = 'hidden';
-    const len = path.getTotalLength();
-    path.style.strokeDasharray = len + ' ' + len;
-    path.style.strokeDashoffset = len;
-    path.style.transition = 'none';
-    requestAnimationFrame(() => {
-      // Now reveal and start drawing in same frame
-      path.style.visibility = 'visible';
-      path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
-      path.style.strokeDashoffset = '0';
-    });
-  }, 60);
-  return line;
-}
-
-function animateDottedLine(coords, opts, drawMs) {
-  // Draws a dotted line using a raw SVG <line> element appended directly to the
-  // overlay pane — bypassing Leaflet's layer management so _updateStyle() never
-  // wipes stroke-dashoffset during flyTo() redraws. Works in Chrome + Safari.
-
-  const dotPattern = opts.dashArray || '5 8';
-  const color = opts.color || 'white';
-  const weight = opts.weight || 2;
-
-  // Convert lat/lng coords to container pixel points
-  const p1 = heroMap.latLngToContainerPoint(L.latLng(coords[0][0], coords[0][1]));
-  const p2 = heroMap.latLngToContainerPoint(L.latLng(coords[1][0], coords[1][1]));
-
-  // Get or create the overlay SVG
-  const overlayPane = heroMap.getPanes().overlayPane;
-  let svg = overlayPane.querySelector('svg#hero-overlay-svg');
-  if (!svg) {
-    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'hero-overlay-svg';
-    svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-    overlayPane.appendChild(svg);
-  }
-
-  // Create a raw SVG line element — NOT a Leaflet managed layer
-  const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  lineEl.setAttribute('x1', p1.x);
-  lineEl.setAttribute('y1', p1.y);
-  lineEl.setAttribute('x2', p2.x);
-  lineEl.setAttribute('y2', p2.y);
-  lineEl.setAttribute('stroke', color);
-  lineEl.setAttribute('stroke-width', String(weight));
-  lineEl.setAttribute('stroke-linecap', 'round');
-  lineEl.setAttribute('opacity', String(opts.opacity || 0.9));
-
-  // pathLength=1 normalizes all length math to 0-1 range
-  lineEl.setAttribute('pathLength', '1');
-  // Convert pixel dashArray to pathLength=1 normalized fractions
-  // '5 7' in pixels → '0.0417 0.0583' in normalized space (≈10 dots across line)
-  const rawParts = dotPattern.trim().split(/\s+/).map(Number);
-  const pixelCycle = rawParts.reduce((a, b) => a + b, 0) || 12;
-  const normCycle = 0.10;
-  const normDot = normCycle * (rawParts[0] / pixelCycle);
-  const normGap = normCycle * ((rawParts[1] || rawParts[0]) / pixelCycle);
-  lineEl.style.strokeDasharray = normDot.toFixed(4) + ' ' + normGap.toFixed(4);
-  lineEl.style.strokeDashoffset = '1';
-  svg.appendChild(lineEl);
-
-  // Reposition when map moves (keeps line geo-anchored during pan/zoom)
-  function reposition() {
-    const np1 = heroMap.latLngToContainerPoint(L.latLng(coords[0][0], coords[0][1]));
-    const np2 = heroMap.latLngToContainerPoint(L.latLng(coords[1][0], coords[1][1]));
-    lineEl.setAttribute('x1', np1.x); lineEl.setAttribute('y1', np1.y);
-    lineEl.setAttribute('x2', np2.x); lineEl.setAttribute('y2', np2.y);
-  }
-  heroMap.on('move zoom', reposition);
-  heroMap.on('moveend zoomend', reposition);
-
-  // Animate: dashoffset from 1 → 0 over drawMs
-  setTimeout(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      lineEl.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
-      lineEl.style.strokeDashoffset = '0';
-    }));
-  }, 60);
-
-  // Return a cleanup handle compatible with heroLayers/fadeLayer
-  const handle = {
-    _rawEl: lineEl,
-    _map: heroMap,
-    _reposition: reposition,
-    getElement: () => lineEl,
-    remove: function() {
-      heroMap.off('move zoom', reposition);
-      heroMap.off('moveend zoomend', reposition);
-      if (lineEl.parentNode) lineEl.parentNode.removeChild(lineEl);
+  // Oscar Austin intercept line — Iran → Dörtyol
+  heroMap.addSource('line-oscar', {type:'geojson',
+    data:{type:'Feature', geometry:{type:'LineString', coordinates:[TEHRAN, DORTYOL]}}
+  });
+  heroMap.addLayer({
+    id:'line-oscar', type:'line', source:'line-oscar',
+    paint:{
+      'line-color':   'rgba(192,57,43,0.85)',
+      'line-width':   1,
+      'line-opacity': 0,
+      'line-opacity-transition': {duration:800, delay:0}
     }
-  };
-  heroLayers.push(handle);
-  return handle;
-}
+  });
 
-// startDotAnim is no longer used by animateDottedLine but kept for safety
-function startDotAnim(path, len, drawMs, dotPattern) {
-  const parts = dotPattern.trim().split(/\s+/).map(Number);
-  const cycle = parts.reduce((a, b) => a + b, 0) || 13;
-  const offset = Math.ceil(len / cycle) * cycle;
-  path.style.transition = 'none';
-  path.style.strokeDasharray = dotPattern;
-  path.style.strokeDashoffset = String(offset);
-  path.style.visibility = 'visible';
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    path.style.transition = 'stroke-dashoffset ' + drawMs + 'ms linear';
-    path.style.strokeDashoffset = '0';
-  }));
-}
-
-function fadeLayer(layer, ms) {
-  const el = layer.getElement ? layer.getElement() : null;
-  if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
-  setTimeout(() => {
-    try {
-      if (layer.remove) { layer.remove(); }           // raw SVG handle
-      else { heroMap.removeLayer(layer); }             // normal Leaflet layer
-    } catch(e) {}
-  }, ms + 100);
-}
-
-function fadeMarker(marker, ms) {
-  const el = marker.getElement ? marker.getElement() : null;
-  if (el) { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }
-  setTimeout(() => { try { heroMap.removeLayer(marker); } catch(e){} }, ms + 100);
-}
-
-function addHeroLayer(layer) { heroLayers.push(layer); return layer; }
-
-function distBoxShow(){document.getElementById('dist-box').classList.add('show');}
-function distRowIn(n,delay){setTimeout(()=>{const r=document.getElementById('db'+n);if(r){r.classList.add('dhcell');r.classList.add('in');}},delay);}
-
-// BEAT 1: Typewriter
-function runTypewriter(cb){
-  const overlineEl = document.getElementById('h-overline');
-  if(overlineEl) overlineEl.style.opacity='1';
-
-  const cursor = document.createElement('span');
-  cursor.id = 'type-cursor';
-  cursor.textContent = '\u2588';
-  cursor.style.cssText = 'color:rgba(196,152,58,0.9);animation:cursorBlink .6s step-end infinite;margin-left:2px';
-  if(!document.getElementById('cursor-style')){
-    const st=document.createElement('style');
-    st.id='cursor-style';
-    st.textContent='@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}';
-    document.head.appendChild(st);
-  }
-  if(overlineEl) overlineEl.appendChild(cursor);
-
-  setTimeout(()=>{
-    const beats = [
-      {span:'ov0', text:'OPERATION EPIC FURY', msPer:44, pauseAfter:480},
-      {span:'ov1', text:' \u00b7 GEOGRAPHIC SECURITY BRIEF', msPer:44, pauseAfter:480},
-      {span:'ov2', text:' \u00b7 FAMILY SAFETY PLAN \u00b7 JUNE 2026', msPer:40, pauseAfter:0},
-    ];
-
-    function typeBeat(beatIdx, onDone) {
-      if(beatIdx >= beats.length){ onDone(); return; }
-      const b = beats[beatIdx];
-      const el = document.getElementById(b.span);
-      if(!el){ typeBeat(beatIdx+1, onDone); return; }
-      if(cursor) el.appendChild(cursor);
-      let i = 0;
-      function nextChar(){
-        if(i >= b.text.length){
-          setTimeout(()=>typeBeat(beatIdx+1, onDone), b.pauseAfter);
-          return;
-        }
-        el.insertBefore(document.createTextNode(b.text[i]), cursor);
-        i++;
-        setTimeout(nextChar, b.msPer + (Math.random()*12-6));
-      }
-      nextChar();
+  // Hezbollah/Akrotiri dotted line — Iran → Akrotiri
+  heroMap.addSource('line-akrotiri', {type:'geojson',
+    data:{type:'Feature', geometry:{type:'LineString', coordinates:[TEHRAN, AKROTIRI]}}
+  });
+  heroMap.addLayer({
+    id:'line-akrotiri', type:'line', source:'line-akrotiri',
+    paint:{
+      'line-color':      'rgba(224,112,48,0.75)',
+      'line-width':      1,
+      'line-dasharray':  [2, 5],
+      'line-opacity':    0,
+      'line-opacity-transition': {duration:800, delay:0}
     }
+  });
 
-    typeBeat(0, ()=>{
-      if(cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);
-      const l1 = document.getElementById('h-line1');
-      const l2 = document.getElementById('h-line2');
-      setTimeout(()=>{ if(l1) l1.style.opacity='1'; }, 800);
-      setTimeout(()=>{
-        if(l2) l2.style.opacity='1';
-        document.getElementById('hero-map-bg').classList.add('map-ready');
-        setTimeout(cb, 2600);
-      }, 1700);
-    });
-  }, 1600);
+  // 930mi strike range circle — centered on Tehran, 1497km radius
+  const rangeGeo = turf.circle(TEHRAN, 1497, {steps:80, units:'kilometers'});
+  heroMap.addSource('range-circle', {type:'geojson', data:rangeGeo});
+  heroMap.addLayer({
+    id:'range-circle', type:'line', source:'range-circle',
+    paint:{
+      'line-color':     'rgba(192,57,43,0.6)',
+      'line-width':     1,
+      'line-dasharray': [2, 5],
+      'line-opacity':   0,
+      'line-opacity-transition': {duration:1000, delay:0}
+    }
+  });
+
+  // Live dots — starts empty, populated by beatDateCounter as dates progress
+  heroMap.addSource('live-dots', {type:'geojson',
+    data:{type:'FeatureCollection', features:[]}
+  });
+  // Strike/warning dots — color data-driven from feature properties
+  heroMap.addLayer({
+    id:'live-dots-main', type:'circle', source:'live-dots',
+    filter:['!=', ['get','t'], 'intercept'],
+    paint:{
+      'circle-radius':  ['get','r'],
+      'circle-color':   ['get','color'],
+      'circle-opacity': 0.85,
+      'circle-stroke-width': 0
+    }
+  });
+  // Intercept dots — blue
+  heroMap.addLayer({
+    id:'live-dots-intercept', type:'circle', source:'live-dots',
+    filter:['==', ['get','t'], 'intercept'],
+    paint:{
+      'circle-radius':  ['get','r'],
+      'circle-color':   '#5aa0e8',
+      'circle-opacity': 0.9,
+      'circle-stroke-width': 0
+    }
+  });
+
+  // Place geo-anchored HTML label markers
+  // Marker moves the element into Mapbox GL's internal container and positions it via CSS transform
+  function placeMarker(coords, labelId) {
+    const el = document.getElementById(labelId);
+    if (!el) return;
+    el.style.display = 'block'; // must be visible for Marker to measure dimensions
+    new mapboxgl.Marker({element:el, anchor:'bottom-left'})
+      .setLngLat(coords)
+      .addTo(heroMap);
+  }
+  placeMarker(ATHENS,   'athens-marker-label');
+  placeMarker(TEHRAN,   'tehran-marker-label');
+  placeMarker(AKROTIRI, 'akrotiri-marker-label');
+  placeMarker(OSCAR,    'oscar-austin-label');
+
+  // Kick off the beat sequence
+  beatSequence();
 }
 
-// BEAT 2: Map tiles fade in
-function beatMapIn(cb){
-  const mapEl = document.getElementById('hero-map-bg');
-  // Wait for the map's opacity transition to fully complete
-  mapEl.addEventListener('transitionend', function onDone(e) {
-    if (e.propertyName !== 'opacity') return;
-    mapEl.removeEventListener('transitionend', onDone);
-    cb();
+// ── Helpers ──
+
+// Show a label by fading in its opacity
+function showLabel(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.opacity = '1';
+}
+
+// Accumulates GeoJSON features and pushes to the live-dots source
+const _liveDots = [];
+function addLiveDot(coords, color, radius, type) {
+  _liveDots.push({
+    type: 'Feature',
+    geometry: {type:'Point', coordinates:coords},
+    properties: {color:color, r:radius, t: type || 'strike'}
+  });
+  heroMap.getSource('live-dots').setData({
+    type:'FeatureCollection', features:_liveDots
   });
 }
 
-// BEAT 3: Athens — pulse dot only
-function beatAthens(cb){
-  const pulse = L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',11)}).addTo(heroMap);
-  addHeroLayer(pulse);
-  setTimeout(cb, 600);
-}
-
-// BEAT 4: Tehran — red dot only
-function beatTehran(cb){
-  const dot = L.marker([35.7,51.4],{icon:pulseIcon('#c0392b',12)}).addTo(heroMap);
-  addHeroLayer(dot);
-  setTimeout(cb, 600);
-}
-
-// BEAT 4b: Athens box opens and types
-  function beatAthensBox(cb){
-    const html = `<div style="
-        display:inline-flex;
-        align-items:center;
-        border:1px solid rgba(61,187,116,0.5);
-        border-radius:2px;
-        overflow:visible;
-        box-shadow:0 0 14px rgba(61,187,116,0.15);
-      "><div id="athens-slide" style="
-          overflow:hidden;
-          width:0px;
-          transition:width 0.55s cubic-bezier(0.4,0,0.2,1);
-        "><div style="
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            width:96px;
-            font-family:'DM Mono',monospace;
-            font-size:13px;
-            letter-spacing:.14em;
-            color:#3dbb74;
-            text-transform:uppercase;
-            background:rgba(61,187,116,0.08);
-            padding:5px 7px;
-            white-space:nowrap;
-            text-shadow:0 0 14px rgba(61,187,116,0.4);
-          ">ATHENS</div></div></div>`;
-    const icon = L.divIcon({
-      className:'',
-      iconSize:[0,0],
-      iconAnchor:[108,44],
-      html
-    });
-    beatRef.athensLabel = L.marker([37.97,23.7],{icon}).addTo(heroMap);
-    addHeroLayer(beatRef.athensLabel);
-    setTimeout(()=>{
-      const el = beatRef.athensLabel.getElement();
-      if(!el) return;
-      const slide = el.querySelector('#athens-slide');
-      if(slide) slide.style.width = '96px';
-    }, 80);
-    setTimeout(cb, 1000);
-  }
-
-// BEAT 4c: Tehran box opens and types
-  function beatTehranBox(cb){
-    const html = `<div style="
-        display:inline-flex;
-        align-items:center;
-        border:1px solid rgba(192,57,43,0.55);
-        border-radius:2px;
-        overflow:visible;
-        box-shadow:0 0 14px rgba(192,57,43,0.15);
-      "><div id="tehran-slide" style="
-          overflow:hidden;
-          width:0px;
-          transition:width 0.55s cubic-bezier(0.4,0,0.2,1);
-        "><div style="
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            width:106px;
-            font-family:'DM Mono',monospace;
-            font-size:13px;
-            letter-spacing:.14em;
-            color:#c0392b;
-            text-transform:uppercase;
-            background:rgba(192,57,43,0.08);
-            padding:5px 7px;
-            white-space:nowrap;
-            text-shadow:0 0 14px rgba(192,57,43,0.4);
-          ">TEHRAN</div></div></div>`;
-    const icon = L.divIcon({
-      className:'',
-      iconSize:[0,0],
-      iconAnchor:[-14,-18],
-      html
-    });
-    beatRef.tehranLabel = L.marker([35.7,51.4],{icon}).addTo(heroMap);
-    addHeroLayer(beatRef.tehranLabel);
-    setTimeout(()=>{
-      const el = beatRef.tehranLabel.getElement();
-      if(!el) return;
-      const slide = el.querySelector('#tehran-slide');
-      if(slide) slide.style.width = '106px';
-    }, 80);
-    setTimeout(cb, 1000);
-  }
-
-// BEAT 5: Tehran→Athens line + circle (raw SVG overlay, sequenced)
-function beatLineAT(cb){
-  const mapEl = document.getElementById('hero-map-bg');
-  const tehPt = heroMap.latLngToContainerPoint([35.7,  51.4]);
-  const athPt = heroMap.latLngToContainerPoint([37.97, 23.7]);
-  const rPx   = Math.sqrt(Math.pow(athPt.x-tehPt.x,2)+Math.pow(athPt.y-tehPt.y,2));
-  beatRef.rPx = rPx; // expose so repositionOverlay and Batch 2 can read/update it
-  const midPt = { x:(tehPt.x+athPt.x)/2, y:(tehPt.y+athPt.y)/2 };
-
-  // Canvas overlay handles all line/arc drawing — no SVG needed
-  canvasClear();
-  // circFill is an SVG circle for the fill fade-in (canvas can't easily fade-in fill separately)
-  const old = document.getElementById('hero-overlay-svg');
-  if(old) old.remove();
-  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.id = 'hero-overlay-svg';
-  svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-  const circFill = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  circFill.setAttribute('cx', tehPt.x); circFill.setAttribute('cy', tehPt.y);
-  circFill.setAttribute('r', rPx);
-  circFill.setAttribute('fill','rgba(192,57,43,0.06)'); circFill.setAttribute('stroke','none');
-  circFill.style.opacity = '0';
-  svg.appendChild(circFill);
-  heroMap.getPanes().overlayPane.appendChild(svg);
-  function repositionOverlay(){
-    const t = heroMap.latLngToContainerPoint([35.7, 51.4]);
-    // beatRef.rPx is set once at beatLineAT start — keeps circle size stable across zoom.
-    // Batch 2 sets beatRef.rPx = rTarget after the shrink animation completes.
-    circFill.setAttribute('cx',t.x); circFill.setAttribute('cy',t.y);
-    circFill.setAttribute('r', beatRef.rPx);
-  }
-  heroMap.on('move zoom', repositionOverlay);
-  heroMap.on('moveend zoomend', repositionOverlay);
-
-  const lineMs = 1400;
-  const circMs = 5500;
-
-  // STEP 1: Draw Tehran→Athens line via Canvas
-  var cancelATLine = null;
-  setTimeout(()=>{
-    cancelATLine = canvasDrawLineLL(35.7, 51.4, 37.97, 23.7,
-      'rgba(192,57,43,0.7)', 0, 0, 1.0, lineMs, null);
-  }, 100);
-
-  // STEP 2: Distance label appears above line midpoint, after line finishes
-  setTimeout(()=>{
-    const upLatLng = heroMap.containerPointToLatLng([midPt.x, midPt.y - 70]);
-    const html = '<div style="display:inline-flex;align-items:center;border:1px solid rgba(192,57,43,0.45);border-radius:2px;overflow:visible"><div id="dist-wrap" style="overflow:hidden;width:0px;height:26px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1)"><div id="dist-inner" style="font-family:\'DM Mono\',monospace;font-size:13px;letter-spacing:.1em;color:rgba(192,57,43,0.9);background:rgba(192,57,43,0.08);padding:4px 9px;white-space:nowrap;line-height:18px"></div></div></div>';
-    const icon = L.divIcon({className:'',iconSize:[0,0],iconAnchor:[88,0],html});
-    beatRef.labelAT = L.marker(upLatLng,{icon}).addTo(heroMap);
-    addHeroLayer(beatRef.labelAT);
-    setTimeout(()=>{
-      const el = beatRef.labelAT.getElement();
-      if(!el) return;
-      const wrap  = el.querySelector('#dist-wrap');
-      const inner = el.querySelector('#dist-inner');
-      if(!wrap||!inner) return;
-      wrap.style.width = '176px';
-      setTimeout(()=>{
-        const label = 'DISTANCE: 1,530 MI';
-        let i=0;
-        const type=()=>{
-          if(i<label.length){
-            inner.textContent+=label[i++];
-            setTimeout(type,45+Math.random()*20);
-          } else {
-            // Append comparison line OUTSIDE the red box — no background
-            const outer = el;
-            const ref = document.createElement('div');
-            ref.style.cssText = 'margin-top:5px;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:.09em;color:rgba(255,255,255,0.82);text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 4px #060810;line-height:1.4';
-            outer.appendChild(ref);
-            const ref2 = 'San Antonio \u2192 New York City \u00b7 1,581 mi';
-            let j=0;
-            const type2=()=>{ if(j<ref2.length){ ref.textContent+=ref2[j++]; setTimeout(type2,35+Math.random()*15); } };
-            setTimeout(type2,300);
-          }
-        };
-        type();
-      }, 620);
-    }, 80);
-  }, lineMs + 400);
-
-  // STEP 3: Draw strike radius circle via Canvas
-  // getCenter() is called every rAF frame — keeps arc locked to Tehran during flyTo pan
-  const circStart = lineMs + 2300;
-  var cancelArc = null;
-  setTimeout(()=>{
-    // Do NOT cancel the Tehran→Athens line here — let it persist alongside the arc
-    // until STEP 5 at fadeAt (7600ms) when the map reposition begins.
-    // Do NOT canvasClear() — it would wipe the line from the registry.
-    // The arc entry is simply added to the existing registry.
-    cancelArc = canvasDrawArc(
-      function() {
-        var t = heroMap.latLngToContainerPoint([35.7, 51.4]);
-        var a = heroMap.latLngToContainerPoint([37.97, 23.7]);
-        return { x: t.x, y: t.y, r: Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2)) };
-      },
-      'rgba(192,57,43,0.5)', 4, 8, 0.9, circMs, null
-    );
-  }, circStart);
-
-  // STEP 4: Fill fades in after ring finishes, arc stroke clears 1.4s later
-  setTimeout(()=>{
-    circFill.style.transition = 'opacity 1.2s ease';
-    circFill.style.opacity = '1';
-    setTimeout(()=>{
-      if (cancelArc) { cancelArc(); cancelArc = null; }
-      canvasClear();
-    }, 1400);
-  }, circStart + circMs + 300);
-
-  // STEP 5: 2s hold, then fade line
-  // Fade line + label together 2s after label finishes typing (~3600ms + 2000ms = 5600ms)
-  // cb fires simultaneously to start map pan during the fade
-  const fadeAt = lineMs + 6200;
-  setTimeout(()=>{
-    // Cancel the line — it stops drawing on the next rAF frame
-    // No canvas fade: arc is still drawing and will clean itself up in STEP 4
-    if (cancelATLine) { cancelATLine(); cancelATLine = null; }
-    // Fade the distance label marker
-    const labelEl = beatRef.labelAT ? beatRef.labelAT.getElement() : null;
-    if(labelEl){ labelEl.style.transition = 'opacity 1s ease'; labelEl.style.opacity = '0'; }
-  }, fadeAt);
-
-  distBoxShow();
-  distRowIn(0, lineMs + 300);
-  setTimeout(cb, fadeAt);
-}
-
-// BEAT 6: Fade AT line, draw Tehran→Dörtyol in purple, fill circle, box row 1
-function beatLineTD(cb){
-  // Fade previous line + label
-  setTimeout(()=>{
-    if(beatRef.lineAT) fadeLayer(beatRef.lineAT, 450);
-    if(beatRef.labelAT) fadeMarker(beatRef.labelAT, 350);
-  },160);
-  setTimeout(()=>{
-    // Dörtyol dot
-    const dot = L.marker([36.8,36.2],{icon:dotIcon('#a78bfa',8)}).addTo(heroMap);
-    addHeroLayer(dot);
-    // Tehran→Dörtyol line (purple)
-    beatRef.lineTD = animateDottedLine(
-      [[35.7,51.4],[36.8,36.2]],
-      {color:'rgba(167,139,250,0.65)',weight:1.5,dashArray:'4 6'},
-      1200
-    );
-    // Dörtyol fill circle
-    setTimeout(()=>{
-      const ring = L.circle([36.8,36.2],{radius:175000,color:'rgba(167,139,250,0.7)',weight:1.5,dashArray:'5 4',fill:false}).addTo(heroMap);
-      addHeroLayer(ring);
-      const fill = L.circle([36.8,36.2],{radius:175000,color:'transparent',fill:true,fillColor:'#a78bfa',fillOpacity:0.06}).addTo(heroMap);
-      addHeroLayer(fill);
-    },420);
-    // Labels
-    setTimeout(()=>{
-      beatRef.labelTD = L.marker([36.2,43.5],{icon:lbl('1,200 MI \u00b7 880 FROM ATHENS','rgba(167,139,250,0.85)')}).addTo(heroMap);
-      addHeroLayer(beatRef.labelTD);
-      const dlbl = L.marker([36.95,36.3],{icon:lbl('D\u00d6RTYOL','rgba(167,139,250,0.65)')}).addTo(heroMap);
-      addHeroLayer(dlbl);
-    },420);
-    distRowIn(1,180);
-  },500);
-  setTimeout(cb,3200);
-}
-
-// BEAT 7: Akrotiri dot + line to Athens, box row 2
-function beatAkrotiri(cb){
-  // Fade TD line
-  setTimeout(()=>{ if(beatRef.lineTD) fadeLayer(beatRef.lineTD, 450); },80);
-  setTimeout(()=>{
-    // Akrotiri dot
-    const dot = L.marker([34.6,32.97],{icon:dotIcon('#e07030',8)}).addTo(heroMap);
-    addHeroLayer(dot);
-    const albl = L.marker([34.5,33.1],{icon:lbl('AKROTIRI','rgba(224,112,48,0.65)')}).addTo(heroMap);
-    addHeroLayer(albl);
-    // Line Akrotiri→Athens
-    beatRef.lineAkr = animateDottedLine(
-      [[34.6,32.97],[37.97,23.7]],
-      {color:'rgba(224,112,48,0.55)',weight:1.2,dashArray:'5 7'},
-      1400
-    );
-    // Distance label
-    setTimeout(()=>{
-      beatRef.labelAkr = L.marker([36.3,28],{icon:lbl('590 MI','rgba(224,112,48,0.7)')}).addTo(heroMap);
-      addHeroLayer(beatRef.labelAkr);
-    },400);
-  },450);
-  setTimeout(cb,3200);
-}
-
-// BEAT 8: Map fills with strike zones, labels, zoom
-function beatMapFill(cb){
-  // Remove the SVG overlay before zooming (it will be repositioned by move listener)
-  // Fade all beat 3-7 layers
-  setTimeout(()=>{
-    heroLayers.forEach(ly=>{
-      try{
-        const el=ly.getElement?ly.getElement():null;
-        if(el){el.style.transition='opacity 1.2s ease';el.style.opacity='0';}
-        setTimeout(()=>{try{heroMap.removeLayer(ly);}catch(e){}},1400);
-      }catch(e){}
-    });
-    heroLayers.length=0;
-  },200);
-
-  // Persistent labels for key locations
-  const markerDelay=[
-    [35.7,52,   lbl('TEHRAN','rgba(192,57,43,0.8)','\u007e1,530 mi from Athens'),550],
-    [37.97,23.7,lbl('ATHENS','rgba(61,187,116,0.75)','Level 1 \u00b7 unchanged'),700],
-  ];
-  markerDelay.forEach(([la,lo,icon,del])=>{
-    setTimeout(()=>L.marker([la,lo],{icon}).addTo(heroMap),del);
-  });
-  setTimeout(()=>{
-    L.marker([37.97,23.7],{icon:pulseIcon('#3dbb74',8)}).addTo(heroMap);
-  },700);
-
-  // Fly to war zone — slow, smooth, Athens visible upper-left
-  setTimeout(()=>heroMap.flyTo([27,43],5.28,{duration:2.2,easeLinearity:0.2}),900);
-  setTimeout(cb,5200);
-}
-
-// BEAT 9+: Date counter ticks through all 17 events
-function beatDateCounter(){
-  document.getElementById('mainnav').classList.add('nav-in');
-  document.getElementById('date-counter').classList.add('show');
-
-  const allDates=[];
-  const d0=new Date(2026,1,28), dN=new Date(2026,3,5);
-  for(let d=new Date(d0);d<=dN;d.setDate(d.getDate()+1)) allDates.push(new Date(d));
-  const MON=['Jan','Feb','Mar','Apr'];
-
-  let idx=0, evIdx=0, speed=600;
-  const dcDate=document.getElementById('dc-date');
-  const dcWrap=document.getElementById('dc-wrap');
-  const dcLog=document.getElementById('dc-log');
-  let firstInterceptSeen = false;
-
-  function evColor(cl){
-    return cl==='ep'?'#a78bfa':cl==='eg'?'#3dbb74':cl==='eb'?'#5aa0e8':cl==='eo'?'#e07030':'#c0392b';
-  }
-
-  function tick(){
-    if(idx>=allDates.length){
-      // All dates done. Show Greece final + scroll hint.
-      setTimeout(()=>{
-        document.getElementById('greece-final').classList.add('show');
-        const hStrip=document.getElementById('h-strip');
-        if(hStrip) hStrip.classList.add('in');
-      },600);
-      // Heavy pause (3s) then Akrotiri drone marker + scroll hint
-      setTimeout(()=>{
-        L.marker([34.6,32.97],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
-        // Also show scroll hint
-        document.getElementById('scroll-hint').classList.add('show');
-      },3000);
-      // Cell 2 (avg strike distance) slides in 1s after dates complete
-      setTimeout(()=>distRowIn(3,0), 1000);
-      return;
-    }
-
-    const d=allDates[idx];
-    const label=MON[d.getMonth()]+' '+d.getDate();
-    dcDate.textContent=label;
-
-    const todayEvs=[];
-    while(evIdx<heroEvents.length && heroEvents[evIdx].d===label){
-      todayEvs.push(heroEvents[evIdx]); evIdx++;
-    }
-
-    let delay=speed;
-
-      if(todayEvs.length===0){
-        const emptyRow=document.createElement('div');
-        emptyRow.className='dlr empty';
-        emptyRow.textContent=label;
-        dcLog.appendChild(emptyRow);
-        requestAnimationFrame(()=>requestAnimationFrame(()=>emptyRow.classList.add('in')));
-      }
-
-    if(todayEvs.length>0){
-      delay=Math.max(speed,350);
-      const ev=todayEvs[0];
-
-      dcWrap.className='';
-      if(ev.cl==='er') dcWrap.classList.add('fr');
-      else if(ev.cl==='ep') dcWrap.classList.add('fp');
-      else if(ev.cl==='eg') dcWrap.classList.add('fg');
-      setTimeout(()=>dcWrap.className='',320);
-
-      todayEvs.forEach((ev2,i)=>{
-        setTimeout(()=>{
-          // Add log row
-          const row=document.createElement('div');
-          row.className='dlr '+ev2.cl;
-          row.textContent=ev2.d+' \u2014 '+ev2.s.substring(0,55)+(ev2.s.length>55?'\u2026':'');
-          dcLog.appendChild(row);
-          requestAnimationFrame(()=>requestAnimationFrame(()=>row.classList.add('in')));
-
-          // Small pulse dot on map for this event
-          // divIcon dot — scales from center of its own coordinate (not SVG origin)
-          const dotSize = 14;
-          const dotHalf = dotSize / 2;
-          const dotColor = evColor(ev2.cl);
-          const dotHtml = `<div style="
-              width:${dotSize}px;height:${dotSize}px;
-              background:${dotColor};
-              border-radius:50%;
-              box-shadow:0 0 8px ${dotColor},0 0 16px ${dotColor}88;
-              transform:scale(0);
-              animation:evDotIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
-            "></div>
-            <div style="
-              position:absolute;top:0;left:0;
-              width:${dotSize}px;height:${dotSize}px;
-              border-radius:50%;
-              border:2px solid ${dotColor};
-              transform:scale(0);
-              opacity:1;
-              animation:evDotEcho 1.4s ease-out forwards;
-            "></div>
-            <style>
-              @keyframes evDotIn{to{transform:scale(1)}}
-              @keyframes evDotEcho{to{transform:scale(6);opacity:0}}
-            </style>`;
-          const flash = L.marker([ev2.lat,ev2.lon],{
-            icon: L.divIcon({
-              className:'',
-              iconSize:[dotSize,dotSize],
-              iconAnchor:[dotHalf,dotHalf],
-              html: dotHtml
-            })
-          }).addTo(heroMap);
-          // Fade to dim after flash
-          setTimeout(()=>{
-            const flashEl = flash.getElement ? flash.getElement() : null;
-            if(flashEl){ flashEl.style.transition='opacity 0.6s ease'; flashEl.style.opacity='0.5'; }
-          }, 1500);
-
-            // Feb 28: burst cluster — 8 dots across Iran strike targets
-            if(ev2.d==='Feb 28'){
-              const burstTargets=[
-                [33.7,48.8,'#5aa0e8'],  // Fordo nuclear site area
-                [35.2,52.1,'#5aa0e8'],  // Parchin military complex
-                [34.0,49.9,'#5aa0e8'],  // Isfahan nuclear
-                [36.3,59.6,'#5aa0e8'],  // Mashhad IRGC
-                [32.6,51.7,'#5aa0e8'],  // Isfahan air defense
-                [31.3,48.7,'#5aa0e8'],  // Ahvaz oil/military
-                [35.8,50.5,'#5aa0e8'],  // Tehran western outskirts
-                [34.8,48.5,'#5aa0e8'],  // Kermanshah missile base
-              ];
-              burstTargets.forEach(([lat,lon,col],bi)=>{
-                setTimeout(()=>{
-                  const bSize=8, bHalf=4;
-                  const bHtml=`<div style="width:${bSize}px;height:${bSize}px;background:${col};border-radius:50%;box-shadow:0 0 6px ${col};transform:scale(0);animation:evDotIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards"></div><div style="position:absolute;top:0;left:0;width:${bSize}px;height:${bSize}px;border-radius:50%;border:1.5px solid ${col};transform:scale(0);opacity:1;animation:evDotEcho 1.2s ease-out forwards"></div><style>@keyframes evDotIn{to{transform:scale(1)}}@keyframes evDotEcho{to{transform:scale(5);opacity:0}}</style>`;
-                  L.marker([lat,lon],{icon:L.divIcon({className:'',iconSize:[bSize,bSize],iconAnchor:[bHalf,bHalf],html:bHtml})}).addTo(heroMap);
-                },bi*120);
-              });
-            }
-
-            // Mar 5: cluster — 6 dots across Gulf/Israel theater for massive strike day
-            if(ev2.d==='Mar 5'){
-              const clusterTargets=[
-                [26.2,50.6,'#c0392b'],  // Bahrain area
-                [24.5,54.3,'#c0392b'],  // UAE/Abu Dhabi
-                [25.3,56.4,'#c0392b'],  // Hormuz strait
-                [31.8,35.2,'#c0392b'],  // Israel/Negev
-                [31.0,34.8,'#c0392b'],  // Southern Israel
-              ];
-              clusterTargets.forEach(([lat,lon,col],ci)=>{
-                setTimeout(()=>{
-                  const cSize=9, cHalf=4;
-                  const cHtml=`<div style="width:${cSize}px;height:${cSize}px;background:${col};border-radius:50%;box-shadow:0 0 7px ${col};transform:scale(0);animation:evDotIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards"></div><div style="position:absolute;top:0;left:0;width:${cSize}px;height:${cSize}px;border-radius:50%;border:1.5px solid ${col};transform:scale(0);opacity:1;animation:evDotEcho 1.3s ease-out forwards"></div><style>@keyframes evDotIn{to{transform:scale(1)}}@keyframes evDotEcho{to{transform:scale(5);opacity:0}}</style>`;
-                  L.marker([lat,lon],{icon:L.divIcon({className:'',iconSize:[cSize,cSize],iconAnchor:[cHalf,cHalf],html:cHtml})}).addTo(heroMap);
-                },ci*150);
-              });
-            }
-
-            // Mar 3 Hezbollah event: slide in dist cell 2 (638 MI / Lebanon→Akrotiri)
-            if(ev2.d==='Mar 3'){
-              setTimeout(()=>distRowIn(2,0), 600);
-              // Akrotiri label animates in during Mar 3
-              setTimeout(()=>{
-                typingMarker(35.4,33.3,'AKROTIRI','rgba(224,112,48,0.9)','Hezbollah drone','rgba(224,112,48,0.75)');
-              }, 800);
-              // Hezbollah base dot + animated dotted line via Canvas
-              setTimeout(()=>{
-                L.marker([33.5,35.5],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
-                const p1 = heroMap.latLngToContainerPoint([33.5,35.5]);
-                const p2 = heroMap.latLngToContainerPoint([34.6,32.97]);
-                canvasDrawLineLL(33.5, 35.5, 34.6, 32.97,
-                  'rgba(224,112,48,0.75)', 2, 5, 1, 1400, null);
-              }, 300);
-            }
-
-
-          // ic:true intercept events: missile path + Oscar Austin intercept
-          if(ev2.ic){
-            // Compute pixel positions for this intercept event
-            var tehPt   = heroMap.latLngToContainerPoint([33.5,47.5]);
-            var oscarPt = heroMap.latLngToContainerPoint([34.5,33.8]);
-            var intPt   = heroMap.latLngToContainerPoint([ev2.lat,ev2.lon]);
-            var missileMs = 1200;
-
-            // Pixel distances — used to sync arrival at intercept point
-            var dMissile = Math.sqrt(Math.pow(intPt.x-tehPt.x,2)+Math.pow(intPt.y-tehPt.y,2));
-            var dShip    = Math.sqrt(Math.pow(intPt.x-oscarPt.x,2)+Math.pow(intPt.y-oscarPt.y,2));
-            var shipMs   = Math.round(missileMs * (dShip / dMissile));
-            var shipDelay = missileMs - shipMs;
-
-            // Purple dotted missile line — stays persistent, geo-anchored
-            canvasDrawLineLL(33.5, 47.5, ev2.lat, ev2.lon,
-              'rgba(167,139,250,0.75)', 2, 5, 1, missileMs, null);
-
-            // First intercept only: origin dot, Oscar Austin dot, dist cell, typing marker
-            if(!firstInterceptSeen){
-              // Red blinking dot at Iranian launch origin — placed once
-              L.marker([33.5,47.5],{icon:pulseIcon('#c0392b',8)}).addTo(heroMap);
-              // Oscar Austin blue dot — south of Cyprus, Eastern Med
-              L.marker([34.5,33.8],{icon:dotIcon('#5aa0e8',9)}).addTo(heroMap);
-              firstInterceptSeen=true;
-              setTimeout(()=>distRowIn(1,0), 800);
-              setTimeout(()=>typingMarker(38.0,36.5,'MISSILES INTERCEPTED','rgba(167,139,250,0.9)','USS Oscar Austin \u00b7 SM-3','rgba(167,139,250,0.75)'), 1200);
-            }
-
-            // Red solid intercept line fires after delay, arrives simultaneously with missile
-            // Capture ev2.lat/lon in closure for geo-anchored redraw
-            (function(iLat, iLon, sMs) {
-              setTimeout(function(){
-                canvasDrawLineLL(34.5, 33.8, iLat, iLon,
-                  'rgba(192,57,43,0.85)', 0, 0, 1, sMs, null);
-              }, shipDelay);
-            })(ev2.lat, ev2.lon, shipMs);
-          }
-        },i*300);
-      });
-    }
-
-    idx++;
-    // Only accelerate after Mar 13 — hold slow through key early dates
-    const isPastMar13 = d.getMonth()===2 && d.getDate()>13 || d.getMonth()>2;
-    if(isPastMar13){
-      speed=Math.max(195,speed-13);
-      setTimeout(tick, Math.round(delay*0.6));
-    } else {
-      const pauseDates=['Mar 3','Mar 4','Mar 7','Mar 9','Mar 13','Mar 22','Mar 30'];
-      const extraPause=pauseDates.includes(label) ? 1000 : 0;
-      setTimeout(tick, delay + extraPause);
-    }
-  }
-
-  tick();
-}
-
-function initHeroMap(){
-  heroMap=L.map('hero-map-bg',{
-    center:[33,38],zoom:5.15,zoomControl:false,
-    scrollWheelZoom:false,dragging:false,
-    doubleClickZoom:false,keyboard:false,touchZoom:false
-  });
-  darkTiles().addTo(heroMap);
-
-  // RUN THE SEQUENCE
-  runTypewriter(()=>{
-    beatMapIn(()=>{
-      beatAthens(()=>{
-        beatTehran(()=>{
-          beatAthensBox(()=>{
-            beatTehranBox(()=>{
-              beatLineAT(()=>{
-                beatMapFill(()=>{
+// ── Beat sequence ──
+function beatSequence() {
+  beatMapIn(function(){
+    beatAthens(function(){
+      beatTehran(function(){
+        beatAthensBox(function(){
+          beatTehranBox(function(){
+            beatLineAT(function(){
+              beatAkrotiri(function(){
+                beatMapFill(function(){
                   beatDateCounter();
                 });
               });
@@ -2118,6 +1343,140 @@ function initHeroMap(){
     });
   });
 }
+
+function beatMapIn(cb) {
+  heroMap.setPaintProperty('heat', 'heatmap-opacity', 0.85);
+  setTimeout(cb, 1200);
+}
+
+function beatAthens(cb) {
+  showLabel('athens-marker-label');
+  setTimeout(cb, 800);
+}
+
+function beatTehran(cb) {
+  showLabel('tehran-marker-label');
+  setTimeout(cb, 800);
+}
+
+// v2 beatAthensBox animated a sliding Athens label on the map, then showed distance boxes.
+// In v3, the Athens label is already a Mapbox marker (shown in beatAthens).
+// This beat reveals the distance info boxes at the bottom of the hero.
+function beatAthensBox(cb) {
+  document.getElementById('dist-box').classList.add('show');
+  var cells = ['db0','db1','db2','db3'];
+  cells.forEach(function(id, i) {
+    setTimeout(function() {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('in');
+    }, i * 200);
+  });
+  setTimeout(cb, 1000);
+}
+
+// v2 beatTehranBox animated a sliding Tehran label on the map.
+// In v3, the Tehran label is already a Mapbox marker (shown in beatTehran).
+// This beat is a timing hold.
+function beatTehranBox(cb) {
+  setTimeout(cb, 600);
+}
+
+function beatLineAT(cb) {
+  heroMap.setPaintProperty('line-ta', 'line-opacity', 0.7);
+  setTimeout(cb, 1500);
+}
+
+function beatAkrotiri(cb) {
+  showLabel('akrotiri-marker-label');
+  heroMap.setPaintProperty('line-akrotiri', 'line-opacity', 1);
+  setTimeout(cb, 800);
+}
+
+function beatMapFill(cb) {
+  // Fly to Gulf-centered view — [lng, lat] in Mapbox GL
+  heroMap.flyTo({
+    center: [43, 27],
+    zoom: 5.28,
+    duration: 2000,
+    easing: function(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+  });
+  setTimeout(cb, 2200);
+}
+
+// ── beatDateCounter — rewritten for Mapbox GL ──
+// Reads timelineEntries[] and ticks through each entry at ENTRY_DELAY intervals.
+// Adds live dots to the map via addLiveDot() as dates progress.
+// No Leaflet calls. No canvas calls.
+function beatDateCounter() {
+  document.getElementById('mainnav').classList.add('nav-in');
+  document.getElementById('date-counter').classList.add('show');
+
+  var dcDate = document.getElementById('dc-date');
+  var dcLog  = document.getElementById('dc-log');
+  var entryIndex = 0;
+  var ENTRY_DELAY = 350; // ms between entries — adjust for pacing
+
+  function showEntry() {
+    if (entryIndex >= timelineEntries.length) {
+      onCounterComplete();
+      return;
+    }
+    var entry = timelineEntries[entryIndex];
+    entryIndex++;
+
+    // Update the large date display
+    dcDate.textContent = entry.date;
+
+    // Add log line if this entry has text
+    if (entry.text) {
+      var line = document.createElement('div');
+      line.className = 'dc-line';
+      if (entry.text.indexOf('NATO intercept') !== -1 || entry.text.indexOf('Level 1') !== -1) {
+        line.style.color = 'var(--safe)';
+      } else if (/strike|struck|missiles|drones|attack/i.test(entry.text)) {
+        line.style.color = 'rgba(192,57,43,0.85)';
+      } else {
+        line.style.color = 'var(--dim2)';
+      }
+      line.textContent = entry.date + ' — ' + entry.text;
+      dcLog.appendChild(line);
+      dcLog.scrollTop = dcLog.scrollHeight;
+    }
+
+    // Add map dots for this entry
+    if (entry.dots && entry.dots.length) {
+      entry.dots.forEach(function(d) {
+        var type = d.color === '#5aa0e8' ? 'intercept' : 'strike';
+        addLiveDot(d.c, d.color, d.r, type);
+        if (d.label === 'oscar') showLabel('oscar-austin-label');
+      });
+    }
+
+    // Oscar Austin intercept line fires on Mar 4
+    if (entry.date === 'Mar 4' && entry.text.indexOf('NATO intercept #1') !== -1) {
+      heroMap.setPaintProperty('line-oscar', 'line-opacity', 0.85);
+    }
+
+    setTimeout(showEntry, ENTRY_DELAY);
+  }
+
+  showEntry();
+}
+
+// Fires once after all timeline entries are shown
+function onCounterComplete() {
+  // Greece final label
+  var gf = document.getElementById('greece-final');
+  if (gf) gf.classList.add('show');
+
+  // Scroll hint
+  var sh = document.getElementById('scroll-hint');
+  if (sh) sh.classList.add('show');
+
+  // 930mi range circle fades in
+  heroMap.setPaintProperty('range-circle', 'line-opacity', 0.6);
+}
+
 
 // ═══════════════════════════════════════
 // WAR MAP
@@ -2799,8 +2158,7 @@ function toggleTimeline(e){
 // INIT
 // ═══════════════════════════════════════
 function initAll(){
-  try{initHeroMap();}catch(e){console.warn('hero:',e);}
-  try{initWarMap();}catch(e){console.warn('war:',e);}
+    try{initWarMap();}catch(e){console.warn('war:',e);}
   try{initUSMap();}catch(e){console.warn('us:',e);}
   try{initMedMap();}catch(e){console.warn('med:',e);}
   try{initShieldMap();}catch(e){console.warn('shield:',e);}
