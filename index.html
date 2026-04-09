@@ -228,11 +228,11 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
 /* ═══════════════════════════════
    STATS
 ═══════════════════════════════ */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
 @media(max-width:700px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 .sg-cell{background:var(--bg3);padding:20px 16px}
-.sg-num{font-size:36px;font-weight:300;line-height:1;margin-bottom:4px}
-.sg-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;line-height:1.4}
+.sg-num{font-size:48px;font-weight:300;line-height:1;margin-bottom:4px}
+.sg-label{font-family:'DM Mono',monospace;font-size:14px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;line-height:1.4}
 
 /* ═══════════════════════════════
    TIMELINE
@@ -382,9 +382,9 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
         <div class="dhc-sub" style="color:rgba(167,139,250,0.75)">closest intercept</div>
       </div>
       <div class="dhcell" id="db3" style="--accent:rgba(192,57,43,0.85)">
-        <div class="dhc-lbl">Avg Strike Distance</div>
-        <div class="dhc-val">703 MI</div>
-        <div class="dhc-sub" style="color:rgba(192,57,43,0.7)">avg · all strike zones · Tehran to Athens · 1,534 MI</div>
+        <div class="dhc-lbl">Furthest Strike</div>
+        <div class="dhc-val">930 MI</div>
+        <div class="dhc-sub" style="color:rgba(192,57,43,0.7)">Furthest confirmed hit during Epic Fury — Athens is 600 mi beyond Iran's reach.</div>
       </div>
     </div>
     <!-- Greece final + scroll hint — Beat 12 -->
@@ -892,6 +892,18 @@ nav.nav-in .nav-pill{background:rgba(61,187,116,0.1);border-color:rgba(61,187,11
   <div class="v-dates">DEPARTURE <span>June 18, 2026</span> &nbsp;·&nbsp; RETURN <span>June 28, 2026</span></div>
 </section>
 
+<section style="padding:60px 24px 40px;max-width:900px;margin:0 auto">
+  <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:24px">The Case for Greece</div>
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="sg-cell"><div class="sg-num" style="color:var(--gold)">1</div><div class="sg-label">Level on FCDO &amp; State Dept scales</div></div>
+    <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">NATO</div><div class="sg-label">Alliance member since 1952</div></div>
+    <div class="sg-cell"><div class="sg-num" style="color:var(--safe)">0</div><div class="sg-label">Strikes within 600 mi of Athens</div></div>
+    <div class="sg-cell"><div class="sg-num" style="color:var(--red)">930 MI</div><div class="sg-label">Furthest confirmed Iranian strike</div></div>
+    <div class="sg-cell"><div class="sg-num" style="color:var(--blue)">4 &#x2F; 4</div><div class="sg-label">Turkey-bound missiles intercepted</div></div>
+    <div class="sg-cell"><div class="sg-num" style="color:var(--gold)">27</div><div class="sg-label">Million tourists in 2025</div></div>
+  </div>
+</section>
+
 <div class="source-bar">
   <strong style="color:var(--dim2)">Sources:</strong> US State Dept Travel Advisory Greece (Level 1, Apr 1 2026, US Embassy Athens) · Al Jazeera: NATO Turkey intercepts Mar 4, 9, 13, 30 2026 · USNI News: SM-3 / USS Oscar Austin Mar 4 2026 · Turkish Defense Ministry statements · The National: missile may have been aimed at Akrotiri · Middle East Eye: isolated Iranian forces · CENTCOM Admiral Cooper: 90% launch reduction · National Security Journal: TEL vulnerability analysis 2026 · ACLED Middle East Special Issue Mar 2026 · Wikipedia: 2026 Iran War, 2026 Turkey intercepts, Iranian ballistic missile program · Istion Yachting: Maiora 126 specs (29 kts, 22 kts cruise, 1500nm) · All events verified ≥2 independent sources.
 </div>
@@ -1089,31 +1101,45 @@ window._canvasRafId = null;
 window._canvasStopped = false;
 
 function getHeroCanvas() {
+  var mapEl = document.getElementById('hero-map-bg');
+  if (!mapEl) return null;
   var c = document.getElementById('hero-canvas-overlay');
-  // Evict stale canvas if it's not on body with position:fixed
-  if (c && (c.parentElement !== document.body || c.style.position !== 'fixed')) {
+  // Evict stale canvas if it's not in the correct pane with position:absolute
+  var expectedParent = mapEl.querySelector('.leaflet-map-pane') || mapEl;
+  if (c && (c.parentElement !== expectedParent || c.style.position !== 'absolute')) {
     c.remove();
     c = null;
   }
   if (c) return c;
   c = document.createElement('canvas');
   c.id = 'hero-canvas-overlay';
-  c.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;';
-  document.body.appendChild(c);
+  // position:absolute inside .leaflet-map-pane at z-index:450.
+  // Inside mapPane's stacking context: tilePane(200) < overlayPane(400) < canvas(450) < markerPane(600).
+  // Lines are above tiles and fill circle, below dots and labels — correct visual order.
+  // mapPane is 0x0 with overflow:visible; we size the canvas from mapEl dimensions.
+  var paneEl = mapEl.querySelector('.leaflet-map-pane') || mapEl;
+  c.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:450;';
+  paneEl.appendChild(c);
   function sizeCanvas() {
-    var mapEl = document.getElementById('hero-map-bg');
-    if (!mapEl) return;
-    var rect = mapEl.getBoundingClientRect();
     var dpr = window.devicePixelRatio;
-    c.width  = Math.round(rect.width  * dpr);
-    c.height = Math.round(rect.height * dpr);
-    c.style.width  = rect.width  + 'px';
-    c.style.height = rect.height + 'px';
-    c.style.top    = rect.top    + 'px';
-    c.style.left   = rect.left   + 'px';
+    var newW = Math.round(mapEl.offsetWidth  * dpr);
+    var newH = Math.round(mapEl.offsetHeight * dpr);
+    // Guard: only assign if changed — canvas.width assignment clears the pixel buffer.
+    var dimsChanged = (newW !== c.width || newH !== c.height);
+    if (dimsChanged) {
+      c.width  = newW;
+      c.height = newH;
+      c.style.width  = mapEl.offsetWidth  + 'px';
+      c.style.height = mapEl.offsetHeight + 'px';
+    }
+    // If resize cleared the canvas, repaint immediately.
+    if (dimsChanged && window._canvasRegistry && window._canvasRegistry.length > 0 && !window._canvasRafId) {
+      window._canvasRafId = requestAnimationFrame(_canvasTickAll);
+    }
   }
   sizeCanvas();
   window.addEventListener('resize', sizeCanvas);
+  // No scroll listener — CSS position handles alignment automatically.
   return c;
 }
 
@@ -1140,6 +1166,21 @@ function _canvasRedraw() {
       ctx.lineCap = 'round';
       ctx.setLineDash([d.dotPx, d.gapPx]);
       ctx.stroke();
+    } else if (entry.type === 'lineLL') {
+      // Geo-anchored line: recompute pixel coords every frame from live map state
+      if (typeof heroMap === 'undefined' || !heroMap) { ctx.restore(); return; }
+      var p1 = heroMap.latLngToContainerPoint([d.lat1, d.lng1]);
+      var p2 = heroMap.latLngToContainerPoint([d.lat2, d.lng2]);
+      var llx = p1.x + (p2.x - p1.x) * entry.prog;
+      var lly = p1.y + (p2.y - p1.y) * entry.prog;
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(llx, lly);
+      ctx.strokeStyle = d.color;
+      ctx.lineWidth = d.widthPx;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([d.dotPx, d.gapPx]);
+      ctx.stroke();
     } else if (entry.type === 'arc') {
       var center = d.getCenter();
       var endAngle = (-Math.PI / 2) + Math.PI * 2 * entry.prog;
@@ -1153,10 +1194,14 @@ function _canvasRedraw() {
     }
     ctx.restore();
   });
+  // Keep completed (prog=1) entries — only remove explicitly cancelled ones
+  // This keeps persistent lines visible after they finish drawing
   window._canvasRegistry = window._canvasRegistry.filter(function(e) {
-    return !e.cancelled && e.prog < 1;
+    return !e.cancelled;
   });
-  if (window._canvasRegistry.length > 0) {
+  // Only keep rAF running if entries are still animating
+  var stillAnimating = window._canvasRegistry.some(function(e) { return e.prog < 1; });
+  if (stillAnimating) {
     window._canvasRafId = requestAnimationFrame(_canvasTickAll);
   } else {
     window._canvasRafId = null;
@@ -1184,6 +1229,32 @@ function canvasDrawLine(x1, y1, x2, y2, color, dotPx, gapPx, widthPx, drawMs, on
   var entry = {
     type: 'line',
     data: { x1: x1, y1: y1, x2: x2, y2: y2, color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx },
+    prog: 0,
+    drawMs: drawMs,
+    startT: performance.now(),
+    onDone: onDone,
+    cancelled: false
+  };
+  window._canvasRegistry.push(entry);
+  if (!window._canvasRafId) {
+    window._canvasRafId = requestAnimationFrame(_canvasTickAll);
+  }
+  return function() { entry.cancelled = true; };
+}
+
+// Draw a geo-anchored line from [lat1,lng1] to [lat2,lng2] over drawMs ms.
+// Pixel positions are recomputed every rAF frame from the live map state,
+// so the line stays locked to geography during pans, zooms, and page scroll.
+// Returns a cancel function.
+function canvasDrawLineLL(lat1, lng1, lat2, lng2, color, dotPx, gapPx, widthPx, drawMs, onDone) {
+  getHeroCanvas();
+  window._canvasStopped = false;
+  var entry = {
+    type: 'lineLL',
+    data: {
+      lat1: lat1, lng1: lng1, lat2: lat2, lng2: lng2,
+      color: color, dotPx: dotPx, gapPx: gapPx, widthPx: widthPx
+    },
     prog: 0,
     drawMs: drawMs,
     startT: performance.now(),
@@ -1572,6 +1643,7 @@ function beatLineAT(cb){
   const tehPt = heroMap.latLngToContainerPoint([35.7,  51.4]);
   const athPt = heroMap.latLngToContainerPoint([37.97, 23.7]);
   const rPx   = Math.sqrt(Math.pow(athPt.x-tehPt.x,2)+Math.pow(athPt.y-tehPt.y,2));
+  beatRef.rPx = rPx; // expose so repositionOverlay and Batch 2 can read/update it
   const midPt = { x:(tehPt.x+athPt.x)/2, y:(tehPt.y+athPt.y)/2 };
 
   // Canvas overlay handles all line/arc drawing — no SVG needed
@@ -1591,22 +1663,22 @@ function beatLineAT(cb){
   heroMap.getPanes().overlayPane.appendChild(svg);
   function repositionOverlay(){
     const t = heroMap.latLngToContainerPoint([35.7, 51.4]);
-    const a = heroMap.latLngToContainerPoint([37.97, 23.7]);
-    const r = Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2));
+    // beatRef.rPx is set once at beatLineAT start — keeps circle size stable across zoom.
+    // Batch 2 sets beatRef.rPx = rTarget after the shrink animation completes.
     circFill.setAttribute('cx',t.x); circFill.setAttribute('cy',t.y);
-    circFill.setAttribute('r',r);
+    circFill.setAttribute('r', beatRef.rPx);
   }
   heroMap.on('move zoom', repositionOverlay);
   heroMap.on('moveend zoomend', repositionOverlay);
 
   const lineMs = 1400;
-  const circMs = 6500;
+  const circMs = 5500;
 
   // STEP 1: Draw Tehran→Athens line via Canvas
   var cancelATLine = null;
   setTimeout(()=>{
-    cancelATLine = canvasDrawLine(tehPt.x, tehPt.y, athPt.x, athPt.y,
-      'rgba(192,57,43,0.85)', 4, 7, 1.5, lineMs, null);
+    cancelATLine = canvasDrawLineLL(35.7, 51.4, 37.97, 23.7,
+      'rgba(192,57,43,0.7)', 0, 0, 1.0, lineMs, null);
   }, 100);
 
   // STEP 2: Distance label appears above line midpoint, after line finishes
@@ -1652,15 +1724,17 @@ function beatLineAT(cb){
   const circStart = lineMs + 2300;
   var cancelArc = null;
   setTimeout(()=>{
-    if (cancelATLine) { cancelATLine(); cancelATLine = null; }
-    canvasClear();
+    // Do NOT cancel the Tehran→Athens line here — let it persist alongside the arc
+    // until STEP 5 at fadeAt (7600ms) when the map reposition begins.
+    // Do NOT canvasClear() — it would wipe the line from the registry.
+    // The arc entry is simply added to the existing registry.
     cancelArc = canvasDrawArc(
       function() {
         var t = heroMap.latLngToContainerPoint([35.7, 51.4]);
         var a = heroMap.latLngToContainerPoint([37.97, 23.7]);
         return { x: t.x, y: t.y, r: Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2)) };
       },
-      'rgba(192,57,43,0.5)', 5, 9, 1.2, circMs, null
+      'rgba(192,57,43,0.5)', 4, 8, 0.9, circMs, null
     );
   }, circStart);
 
@@ -1953,30 +2027,49 @@ function beatDateCounter(){
                 L.marker([33.5,35.5],{icon:dotIcon('#e07030',7)}).addTo(heroMap);
                 const p1 = heroMap.latLngToContainerPoint([33.5,35.5]);
                 const p2 = heroMap.latLngToContainerPoint([34.6,32.97]);
-                var cancelHez = canvasDrawLine(p1.x, p1.y, p2.x, p2.y,
-                  'rgba(224,112,48,0.75)', 5, 8, 2, 1400, null);
-                // Clear after draw (1400ms) + hold (2000ms)
-                setTimeout(function(){ if(cancelHez){ cancelHez(); } _canvasRedraw(); }, 3400);
+                canvasDrawLineLL(33.5, 35.5, 34.6, 32.97,
+                  'rgba(224,112,48,0.75)', 2, 5, 1, 1400, null);
               }, 300);
             }
 
 
-          // ic:true intercept events: animate missile path
+          // ic:true intercept events: missile path + Oscar Austin intercept
           if(ev2.ic){
-            // Draw animated missile path from W.Iran to intercept point
-            const tehPt = heroMap.latLngToContainerPoint([33.5,47.5]);
-            const intPt = heroMap.latLngToContainerPoint([ev2.lat,ev2.lon]);
-            var cancelMissile = canvasDrawLine(tehPt.x, tehPt.y, intPt.x, intPt.y,
-              'rgba(167,139,250,0.75)', 4, 7, 2, 1200, null);
-            // Clear after draw (1200ms) + hold (1600ms)
-            setTimeout(function(){ if(cancelMissile){ cancelMissile(); } _canvasRedraw(); }, 2800);
+            // Compute pixel positions for this intercept event
+            var tehPt   = heroMap.latLngToContainerPoint([33.5,47.5]);
+            var oscarPt = heroMap.latLngToContainerPoint([34.5,33.8]);
+            var intPt   = heroMap.latLngToContainerPoint([ev2.lat,ev2.lon]);
+            var missileMs = 1200;
 
-            // First intercept only: slide in dist cell 1 (1,200 MI / Dörtyol)
+            // Pixel distances — used to sync arrival at intercept point
+            var dMissile = Math.sqrt(Math.pow(intPt.x-tehPt.x,2)+Math.pow(intPt.y-tehPt.y,2));
+            var dShip    = Math.sqrt(Math.pow(intPt.x-oscarPt.x,2)+Math.pow(intPt.y-oscarPt.y,2));
+            var shipMs   = Math.round(missileMs * (dShip / dMissile));
+            var shipDelay = missileMs - shipMs;
+
+            // Purple dotted missile line — stays persistent, geo-anchored
+            canvasDrawLineLL(33.5, 47.5, ev2.lat, ev2.lon,
+              'rgba(167,139,250,0.75)', 2, 5, 1, missileMs, null);
+
+            // First intercept only: origin dot, Oscar Austin dot, dist cell, typing marker
             if(!firstInterceptSeen){
+              // Red blinking dot at Iranian launch origin — placed once
+              L.marker([33.5,47.5],{icon:pulseIcon('#c0392b',8)}).addTo(heroMap);
+              // Oscar Austin blue dot — south of Cyprus, Eastern Med
+              L.marker([34.5,33.8],{icon:dotIcon('#5aa0e8',9)}).addTo(heroMap);
               firstInterceptSeen=true;
               setTimeout(()=>distRowIn(1,0), 800);
               setTimeout(()=>typingMarker(38.0,36.5,'MISSILES INTERCEPTED','rgba(167,139,250,0.9)','USS Oscar Austin \u00b7 SM-3','rgba(167,139,250,0.75)'), 1200);
             }
+
+            // Red solid intercept line fires after delay, arrives simultaneously with missile
+            // Capture ev2.lat/lon in closure for geo-anchored redraw
+            (function(iLat, iLon, sMs) {
+              setTimeout(function(){
+                canvasDrawLineLL(34.5, 33.8, iLat, iLon,
+                  'rgba(192,57,43,0.85)', 0, 0, 1, sMs, null);
+              }, shipDelay);
+            })(ev2.lat, ev2.lon, shipMs);
           }
         },i*300);
       });
