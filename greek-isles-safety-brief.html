@@ -1643,36 +1643,12 @@ function beatLineAT(cb){
   const tehPt = heroMap.latLngToContainerPoint([35.7,  51.4]);
   const athPt = heroMap.latLngToContainerPoint([37.97, 23.7]);
   const rPx   = Math.sqrt(Math.pow(athPt.x-tehPt.x,2)+Math.pow(athPt.y-tehPt.y,2));
-  beatRef.rPx = rPx; // expose so repositionOverlay and Batch 2 can read/update it
+  beatRef.rPx = rPx; // expose so Batch 2 can read/update it
   const midPt = { x:(tehPt.x+athPt.x)/2, y:(tehPt.y+athPt.y)/2 };
 
   // Canvas overlay handles all line/arc drawing — no SVG needed
   canvasClear();
-  // circFill is an SVG circle for the fill fade-in (canvas can't easily fade-in fill separately)
-  const old = document.getElementById('hero-overlay-svg');
-  if(old) old.remove();
-  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.id = 'hero-overlay-svg';
-  svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;overflow:visible';
-  const circFill = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  circFill.setAttribute('cx', tehPt.x); circFill.setAttribute('cy', tehPt.y);
-  circFill.setAttribute('r', rPx);
-  circFill.setAttribute('fill','rgba(192,57,43,0.06)'); circFill.setAttribute('stroke','none');
-  circFill.style.opacity = '0';
-  svg.appendChild(circFill);
-  heroMap.getPanes().overlayPane.appendChild(svg);
-  function repositionOverlay(){
-    const t = heroMap.latLngToContainerPoint([35.7, 51.4]);
-    // beatRef.rPx is set once at beatLineAT start — keeps circle size stable across zoom.
-    // Batch 2 sets beatRef.rPx = rTarget after the shrink animation completes.
-    circFill.setAttribute('cx',t.x); circFill.setAttribute('cy',t.y);
-    circFill.setAttribute('r', beatRef.rPx);
-  }
-  heroMap.on('move zoom', repositionOverlay);
-  heroMap.on('moveend zoomend', repositionOverlay);
-
   const lineMs = 1400;
-  const circMs = 5500;
 
   // STEP 1: Draw Tehran→Athens line via Canvas
   var cancelATLine = null;
@@ -1719,43 +1695,14 @@ function beatLineAT(cb){
     }, 80);
   }, lineMs + 400);
 
-  // STEP 3: Draw strike radius circle via Canvas
-  // getCenter() is called every rAF frame — keeps arc locked to Tehran during flyTo pan
-  const circStart = lineMs + 2300;
-  var cancelArc = null;
-  setTimeout(()=>{
-    // Do NOT cancel the Tehran→Athens line here — let it persist alongside the arc
-    // until STEP 5 at fadeAt (7600ms) when the map reposition begins.
-    // Do NOT canvasClear() — it would wipe the line from the registry.
-    // The arc entry is simply added to the existing registry.
-    cancelArc = canvasDrawArc(
-      function() {
-        var t = heroMap.latLngToContainerPoint([35.7, 51.4]);
-        var a = heroMap.latLngToContainerPoint([37.97, 23.7]);
-        return { x: t.x, y: t.y, r: Math.sqrt(Math.pow(a.x-t.x,2)+Math.pow(a.y-t.y,2)) };
-      },
-      'rgba(192,57,43,0.5)', 4, 8, 0.9, circMs, null
-    );
-  }, circStart);
-
-  // STEP 4: Fill fades in after ring finishes, arc stroke clears 1.4s later
-  setTimeout(()=>{
-    circFill.style.transition = 'opacity 1.2s ease';
-    circFill.style.opacity = '1';
-    setTimeout(()=>{
-      if (cancelArc) { cancelArc(); cancelArc = null; }
-      canvasClear();
-    }, 1400);
-  }, circStart + circMs + 300);
-
   // STEP 5: 2s hold, then fade line
   // Fade line + label together 2s after label finishes typing (~3600ms + 2000ms = 5600ms)
   // cb fires simultaneously to start map pan during the fade
   const fadeAt = lineMs + 6200;
   setTimeout(()=>{
-    // Cancel the line — it stops drawing on the next rAF frame
-    // No canvas fade: arc is still drawing and will clean itself up in STEP 4
+    // Cancel the line and clear canvas
     if (cancelATLine) { cancelATLine(); cancelATLine = null; }
+    canvasClear();
     // Fade the distance label marker
     const labelEl = beatRef.labelAT ? beatRef.labelAT.getElement() : null;
     if(labelEl){ labelEl.style.transition = 'opacity 1s ease'; labelEl.style.opacity = '0'; }
