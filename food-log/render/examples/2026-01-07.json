@@ -1,0 +1,31 @@
+{
+  "_comment": "SAMPLE, not a log entry. The midday update sheet: scoreboard + receipt for what is already in, meal cards for what is still on deck. `eaten` is what splits the two.",
+  "date": "2026-01-07",
+  "weekday": "wednesday",
+  "status": "open",
+  "day": 2,
+  "targets": { "cal": 2690, "p": 230, "f": 90, "c": 240 },
+  "items": [
+    { "slot": "morning", "name": "Espresso + 1 tsp butter",
+      "cal": 40, "p": 0, "f": 4, "c": 0, "eaten": true },
+    { "slot": "breakfast", "name": "Cottage cheese bowl — oats, berries, honey",
+      "receipt": "Cottage cheese bowl",
+      "cal": 540, "p": 34, "f": 8, "c": 83, "eaten": true },
+    { "slot": "wake", "name": "Protein shake — whey + dextrose",
+      "cal": 230, "p": 26, "f": 2, "c": 28, "eaten": true },
+    { "slot": "lunch", "name": "Poke — the last pound",
+      "cal": 590, "p": 102, "f": 10, "c": 12, "eaten": true },
+    { "at": "PM", "slot": "pm", "name": "Shake №2 + coconut water",
+      "ing": "1 scoop whey in water · one C2O with pulp — budgeted",
+      "cal": 230, "p": 28, "f": 2, "c": 28, "eaten": false },
+    { "at": "DINNER", "slot": "dinner", "name": "Chicken + asparagus",
+      "ing": "10.5 oz chicken breast, cooked weight · 1 bunch asparagus · 1 tbsp olive oil · 1 tsp honey",
+      "cal": 670, "p": 95, "f": 24, "c": 13, "eaten": false },
+    { "at": "NIGHT", "slot": "night", "name": "Yasso bar",
+      "ing": "1 bar — closes carbs on the number",
+      "cal": 80, "p": 5, "f": 1, "c": 15, "eaten": false }
+  ],
+  "notes": [],
+  "story": "Protein is already three quarters home before lunch is cleared",
+  "footnote": "Cooked weights throughout · honey counted at 1 tsp"
+}
