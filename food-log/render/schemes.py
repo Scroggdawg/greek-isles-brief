@@ -139,13 +139,15 @@ SCHEMES = {
         "rule": (199, 205, 196),
         "amber": (204, 132, 16),
         "red": (203, 62, 48),
+        # Validated (dataviz six-checks, light surface): adjacent pairs remain
+        # separable under CVD; olive and rust deliberately kept non-adjacent.
         "accents": [
-            (24, 108, 82),
-            (108, 142, 46),
-            (166, 132, 32),
-            (30, 122, 138),
-            (140, 84, 44),
-            (86, 96, 158),
+            (24, 140, 98),
+            (196, 148, 30),
+            (46, 114, 192),
+            (180, 78, 42),
+            (128, 88, 192),
+            (106, 160, 42),
         ],
     },
     "plum": {
